@@ -1,47 +1,105 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
-import PageHeader from '@/components/layout/PageHeader.astro';
+import Hero from '@/components/home/Hero.astro';
+import Philosophy from '@/components/home/Philosophy.astro';
 import Section from '@/components/layout/Section.astro';
+import SectionHeading from '@/components/layout/SectionHeading.astro';
 import Button from '@/components/ui/Button.astro';
-import { navItems, siteConfig } from '@/config/site';
+import DIYProjectGrid from '@/components/diy/DIYProjectGrid.astro';
+import ProductShelf from '@/components/products/ProductShelf.astro';
+import { getApprovedProductListItems, getPublishedDIYProjects } from '@/data-access';
 
-const sections = navItems.filter((item) => item.href !== '/' && item.href !== '/about');
+const FEATURED_COUNT = 4;
+
+const [outdoor, indoor, costumes, projects] = await Promise.all([
+  getApprovedProductListItems({
+    section: 'decorations',
+    categorySlug: 'outdoor',
+    limit: FEATURED_COUNT,
+  }),
+  getApprovedProductListItems({
+    section: 'decorations',
+    categorySlug: 'indoor',
+    limit: FEATURED_COUNT,
+  }),
+  getApprovedProductListItems({ section: 'costumes', limit: FEATURED_COUNT }),
+  getPublishedDIYProjects(3),
+]);
 ---
 
 <BaseLayout>
-  <PageHeader title={siteConfig.name} description={siteConfig.description} />
-  <Section>
-    <ul class="sections">
-      {
-        sections.map((item) => (
-          <li>
-            <h2>{item.label}</h2>
-            {item.description && <p>{item.description}</p>}
-            <Button href={item.href} variant="secondary">Browse {item.label}</Button>
-          </li>
-        ))
-      }
-    </ul>
+  <Hero
+    eyebrow="Curated Halloween finds"
+    title="Halloween things worth buying, and worth building."
+    description="Decorations, costumes, and creative projects chosen for how they look, how they're made, and what they cost. No flimsy filler, no sticker shock."
+  >
+    <Button href="/decorations" variant="inverse" size="lg">Browse decorations</Button>
+    <Button href="/diy-projects" variant="inverse-outline" size="lg">See DIY projects</Button>
+  </Hero>
+
+  <ProductShelf
+    id="outdoor-heading"
+    eyebrow="Decorations"
+    title="Outdoor decorations"
+    description="Make the yard, porch, and front door the one everyone slows down for."
+    items={outdoor}
+    viewAllHref="/decorations/outdoor"
+    viewAllLabel="All outdoor"
+    emptyMessage="Outdoor picks are being reviewed. Check back soon."
+  />
+
+  <ProductShelf
+    id="indoor-heading"
+    variant="muted"
+    eyebrow="Decorations"
+    title="Indoor decorations"
+    description="Mantels, tables, windows, and walls: the details that make a room feel like October."
+    items={indoor}
+    viewAllHref="/decorations/indoor"
+    viewAllLabel="All indoor"
+    emptyMessage="Indoor picks are being reviewed. Check back soon."
+  />
+
+  <ProductShelf
+    id="costumes-heading"
+    eyebrow="Costumes"
+    title="Costumes"
+    description="For trick-or-treating, parties, and everything in between."
+    items={costumes}
+    viewAllHref="/costumes/products"
+    viewAllLabel="All costumes"
+    emptyMessage="Costume picks are being reviewed. Check back soon."
+  />
+
+  <Section variant="muted" labelledby="diy-heading">
+    <SectionHeading
+      id="diy-heading"
+      eyebrow="DIY projects"
+      title="Make something worth showing off"
+      description="Projects with clear steps and a result you'll be proud to put on display."
+    >
+      <Button href="/diy-projects" variant="secondary">All projects</Button>
+    </SectionHeading>
+    <DIYProjectGrid projects={projects} />
   </Section>
+
+  <Philosophy
+    eyebrow="How we curate"
+    title="Quality that's worth the price"
+    description="Halloween shopping tends to swing between very cheap and very expensive. We look for the sweet spot in between."
+    principles={[
+      {
+        title: 'Made to look good',
+        text: 'We favor pieces that look convincing in person, not just in a product photo.',
+      },
+      {
+        title: 'Built to last',
+        text: 'Materials and construction matter. We look for products that can come out of storage next year.',
+      },
+      {
+        title: 'Fairly priced',
+        text: 'A higher price should mean more. We look for products that give you your money’s worth.',
+      },
+    ]}
+  />
 </BaseLayout>
-
-<style>
-  .sections {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
-    gap: var(--space-4);
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-
-  .sections li {
-    padding: var(--space-4);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius);
-  }
-
-  h2 {
-    margin-top: 0;
-  }
-</style>

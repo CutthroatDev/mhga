@@ -2,8 +2,16 @@
 import type { GetStaticPaths } from 'astro';
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import Section from '@/components/layout/Section.astro';
+import Breadcrumbs from '@/components/ui/Breadcrumbs.astro';
 import DIYProjectDetail from '@/components/diy/DIYProjectDetail.astro';
-import { getPublishedDIYProjects } from '@/data-access';
+import DIYProjectGrid from '@/components/diy/DIYProjectGrid.astro';
+import SectionHeading from '@/components/layout/SectionHeading.astro';
+import ProductShelf from '@/components/products/ProductShelf.astro';
+import {
+  getApprovedProductListItemsByIds,
+  getPublishedDIYProjects,
+  getRelatedDIYProjects,
+} from '@/data-access';
 
 export const getStaticPaths = (async () => {
   const projects = await getPublishedDIYProjects();
@@ -11,10 +19,50 @@ export const getStaticPaths = (async () => {
 }) satisfies GetStaticPaths;
 
 const { project } = Astro.props;
+const [relatedProducts, relatedProjects] = await Promise.all([
+  getApprovedProductListItemsByIds(project.relatedProductIds ?? []),
+  getRelatedDIYProjects(project),
+]);
 ---
 
 <BaseLayout title={project.title} description={project.summary}>
   <Section>
+    <div class="crumbs">
+      <Breadcrumbs
+        items={[
+          { label: 'Home', href: '/' },
+          { label: 'DIY Projects', href: '/diy-projects' },
+          { label: project.title },
+        ]}
+      />
+    </div>
     <DIYProjectDetail project={project} />
   </Section>
+
+  {
+    relatedProducts.length > 0 && (
+      <ProductShelf
+        id="related-products-heading"
+        variant="muted"
+        eyebrow="Shop the project"
+        title="Related products"
+        items={relatedProducts}
+      />
+    )
+  }
+
+  {
+    relatedProjects.length > 0 && (
+      <Section labelledby="related-projects-heading">
+        <SectionHeading id="related-projects-heading" title="More projects" />
+        <DIYProjectGrid projects={relatedProjects} />
+      </Section>
+    )
+  }
 </BaseLayout>
+
+<style>
+  .crumbs {
+    margin-bottom: var(--space-4);
+  }
+</style>

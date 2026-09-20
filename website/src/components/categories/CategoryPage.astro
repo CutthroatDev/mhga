@@ -1,6 +1,9 @@
 ---
-import type { NavItem, Product } from '@/types';
+// Template for product listing pages (outdoor, indoor, all products, costumes).
+// Pages pass data in; nothing here reads data directly.
+import type { NavItem, ProductListItem } from '@/types';
 import BaseLayout from '@/layouts/BaseLayout.astro';
+import HeadingDecor from '@/components/decor/HeadingDecor.astro';
 import PageHeader from '@/components/layout/PageHeader.astro';
 import Section from '@/components/layout/Section.astro';
 import SubNav from '@/components/layout/SubNav.astro';
@@ -8,20 +11,47 @@ import ProductGrid from '@/components/products/ProductGrid.astro';
 
 interface Props {
   title: string;
+  eyebrow?: string;
   description?: string;
-  products: Product[];
+  tone?: 'default' | 'decorations' | 'outdoor' | 'indoor' | 'costumes' | 'diy';
+  items: ProductListItem[];
   subNavItems?: NavItem[];
+  subNavLabel?: string;
+  emptyTitle?: string;
   emptyMessage?: string;
 }
 
-const { title, description, products, subNavItems = [], emptyMessage } = Astro.props;
+const {
+  title,
+  eyebrow,
+  description,
+  tone = 'default',
+  items,
+  subNavItems = [],
+  subNavLabel,
+  emptyTitle,
+  emptyMessage,
+} = Astro.props;
 ---
 
 <BaseLayout title={title} description={description}>
-  <PageHeader title={title} description={description}>
-    <SubNav items={subNavItems} />
+  <PageHeader title={title} eyebrow={eyebrow} description={description} tone={tone}>
+    <HeadingDecor slot="decor" tone={tone} />
+    <SubNav items={subNavItems} label={subNavLabel} />
   </PageHeader>
   <Section>
-    <ProductGrid products={products} emptyMessage={emptyMessage} />
+    <h2 class="visually-hidden">Products</h2>
+    <p class="count" aria-live="polite">
+      {items.length} {items.length === 1 ? 'product' : 'products'}
+    </p>
+    <ProductGrid items={items} emptyTitle={emptyTitle} emptyMessage={emptyMessage} />
   </Section>
 </BaseLayout>
+
+<style>
+  .count {
+    margin-bottom: var(--space-3);
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+</style>

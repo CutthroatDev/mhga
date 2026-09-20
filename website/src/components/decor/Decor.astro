@@ -1,0 +1,61 @@
+---
+/**
+ * Positioning wrapper for every decorative element. Put it inside a `.decor-host`
+ * (or a component that already is one, like Section variant="band").
+ *
+ * Decor is always aria-hidden, sits behind content, and ignores the pointer. See
+ * src/styles/decor.css for the rules that keep it from affecting layout.
+ */
+interface Props {
+  position?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'inline';
+  /** Show for one theme only. Defaults to both (the child component may swap variants). */
+  theme?: 'both' | 'cute' | 'scary';
+  /** Any CSS length, e.g. "5rem". */
+  size?: string;
+  /** Distance from the chosen edges; negative values push the piece past the edge. */
+  x?: string;
+  y?: string;
+  rotate?: string;
+  /** Hide below 48rem. Most decor should set this. */
+  desktopOnly?: boolean;
+  motion?: 'none' | 'float' | 'sway';
+}
+
+const {
+  position = 'top-right',
+  theme = 'both',
+  size,
+  x,
+  y,
+  rotate,
+  desktopOnly = false,
+  motion = 'none',
+} = Astro.props;
+
+const vars = [
+  size && `--decor-size:${size}`,
+  x && `--decor-x:${x}`,
+  y && `--decor-y:${y}`,
+  rotate && `--decor-rotate:${rotate}`,
+]
+  .filter(Boolean)
+  .join(';');
+---
+
+<div
+  class:list={[
+    'decor',
+    `decor--${position}`,
+    {
+      'decor--desktop-only': desktopOnly,
+      'decor--float': motion === 'float',
+      'decor--sway': motion === 'sway',
+      'only-cute': theme === 'cute',
+      'only-scary': theme === 'scary',
+    },
+  ]}
+  style={vars || undefined}
+  aria-hidden="true"
+>
+  <slot />
+</div>

@@ -1,0 +1,53 @@
+---
+// Decorative only. Cute: smiling pumpkin. Scary: darker, carved and glowing.
+---
+
+<svg class="only-cute" viewBox="0 0 80 72" focusable="false">
+  <path class="stem" d="M37 14c0-6 2-9 6-11l2 4c-3 1-4 3-4 7z"></path>
+  <ellipse class="body" cx="40" cy="42" rx="34" ry="26"></ellipse>
+  <ellipse class="shade" cx="40" cy="42" rx="18" ry="26"></ellipse>
+  <ellipse class="body" cx="40" cy="42" rx="9" ry="26"></ellipse>
+  <circle class="ink" cx="29" cy="40" r="3.4"></circle>
+  <circle class="ink" cx="51" cy="40" r="3.4"></circle>
+  <path class="smile" d="M32 51q8 8 16 0"></path>
+  <circle class="blush" cx="22" cy="49" r="4"></circle>
+  <circle class="blush" cx="58" cy="49" r="4"></circle>
+</svg>
+
+<svg class="only-scary" viewBox="0 0 80 72" focusable="false">
+  <path class="stem" d="M36 14c-1-6 1-10 6-12l2 4c-3 2-3 4-3 8z"></path>
+  <ellipse class="body" cx="40" cy="43" rx="33" ry="25"></ellipse>
+  <ellipse class="shade" cx="40" cy="43" rx="17" ry="25"></ellipse>
+  <ellipse class="body" cx="40" cy="43" rx="8" ry="25"></ellipse>
+  <path class="carve" d="M20 36l12-4-3 10z"></path>
+  <path class="carve" d="M60 36l-12-4 3 10z"></path>
+  <path class="carve" d="M25 52l6 5 5-6 4 7 5-7 5 6 6-5-4 10H29z"></path>
+</svg>
+
+<style>
+  .body {
+    fill: var(--deco-pumpkin);
+  }
+  .shade {
+    fill: var(--deco-pumpkin-shade);
+  }
+  .stem {
+    fill: var(--deco-stem);
+  }
+  .ink {
+    fill: var(--deco-ink);
+  }
+  .blush {
+    fill: var(--deco-blush);
+    fill-opacity: 0.6;
+  }
+  .smile {
+    fill: none;
+    stroke: var(--deco-ink);
+    stroke-width: 3;
+    stroke-linecap: round;
+  }
+  .carve {
+    fill: var(--deco-eye);
+  }
+</style>

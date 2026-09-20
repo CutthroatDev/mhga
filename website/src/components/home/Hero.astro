@@ -1,0 +1,75 @@
+---
+// Homepage hero. Decorations here are limited to the wide-screen edges; on phones the
+// hero is text and buttons only.
+import Container from '@/components/layout/Container.astro';
+import Decor from '@/components/decor/Decor.astro';
+import Ghost from '@/components/decor/Ghost.astro';
+import Eyes from '@/components/decor/Eyes.astro';
+import Cobweb from '@/components/decor/Cobweb.astro';
+
+interface Props {
+  eyebrow?: string;
+  title: string;
+  description?: string;
+}
+
+const { eyebrow, title, description } = Astro.props;
+---
+
+<section class="hero band decor-host" aria-labelledby="hero-title">
+  <Decor position="top-left" size="7rem" theme="scary" desktopOnly>
+    <Cobweb />
+  </Decor>
+  <Decor position="bottom-right" size="9rem" x="3%" y="-2.5rem" rotate="6deg" desktopOnly motion="float">
+    <Ghost />
+  </Decor>
+  <Decor position="bottom-left" size="5.5rem" x="46%" y="0" desktopOnly>
+    <Eyes />
+  </Decor>
+
+  <Container>
+    <div class="content">
+      {eyebrow && <p class="eyebrow">{eyebrow}</p>}
+      <h1 id="hero-title">{title}</h1>
+      {description && <p class="description">{description}</p>}
+      <div class="actions">
+        <slot />
+      </div>
+    </div>
+  </Container>
+</section>
+
+<style>
+  .hero {
+    padding-block: clamp(3rem, 9vw, 6.5rem);
+    background:
+      radial-gradient(
+        50rem 26rem at 90% 10%,
+        color-mix(in srgb, var(--band-glow) var(--glow-strength), transparent),
+        transparent 65%
+      ),
+      var(--band-bg);
+  }
+
+  .content {
+    max-width: 40rem;
+  }
+
+  h1 {
+    font-size: var(--text-hero);
+    line-height: 1.05;
+  }
+
+  .description {
+    margin-top: var(--space-3);
+    font-size: var(--text-lg);
+    color: var(--band-muted);
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    margin-top: var(--space-5);
+  }
+</style>

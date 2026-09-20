@@ -1,18 +1,20 @@
 ---
 import type { DIYProject } from '@/types';
+import EmptyState from '@/components/ui/EmptyState.astro';
 import DIYProjectCard from './DIYProjectCard.astro';
 
 interface Props {
   projects: DIYProject[];
+  emptyTitle?: string;
   emptyMessage?: string;
 }
 
-const { projects, emptyMessage = 'No projects yet. Check back soon.' } = Astro.props;
+const { projects, emptyTitle, emptyMessage } = Astro.props;
 ---
 
 {
   projects.length > 0 ? (
-    <ul class="grid">
+    <ul class="grid" role="list">
       {projects.map((project) => (
         <li>
           <DIYProjectCard project={project} />
@@ -20,21 +22,26 @@ const { projects, emptyMessage = 'No projects yet. Check back soon.' } = Astro.p
       ))}
     </ul>
   ) : (
-    <p class="empty">{emptyMessage}</p>
+    <EmptyState
+      title={emptyTitle ?? 'Projects coming soon'}
+      message={emptyMessage ?? 'New projects are on the workbench. Check back soon.'}
+    />
   )
 }
 
 <style>
   .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--space-4);
     margin: 0;
     padding: 0;
     list-style: none;
   }
 
-  .empty {
-    color: var(--color-text-muted);
+  @media (min-width: 40rem) {
+    .grid {
+      grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+    }
   }
 </style>

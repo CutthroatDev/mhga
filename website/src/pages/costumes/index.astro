@@ -1,16 +1,52 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
+import HeadingDecor from '@/components/decor/HeadingDecor.astro';
 import PageHeader from '@/components/layout/PageHeader.astro';
 import Section from '@/components/layout/Section.astro';
 import SubNav from '@/components/layout/SubNav.astro';
+import LinkTile from '@/components/ui/LinkTile.astro';
+import ProductShelf from '@/components/products/ProductShelf.astro';
 import { getNavChildren } from '@/config/site';
+import { getApprovedProductListItems } from '@/data-access';
+
+const featured = await getApprovedProductListItems({ section: 'costumes', limit: 4 });
 ---
 
-<BaseLayout title="Costumes">
-  <PageHeader title="Costumes" description="Halloween costumes for everyone.">
+<BaseLayout title="Costumes" description="Halloween costumes worth wearing.">
+  <PageHeader
+    eyebrow="Costumes"
+    title="Find your costume"
+    description="For trick-or-treating, parties, and everything in between."
+    tone="costumes"
+  >
+    <HeadingDecor slot="decor" tone="costumes" />
     <SubNav items={getNavChildren('/costumes')} label="Costumes" />
   </PageHeader>
-  <Section>
-    <p>Placeholder: costumes overview.</p>
+
+  <ProductShelf
+    id="featured-heading"
+    eyebrow="Featured"
+    title="Featured costumes"
+    items={featured}
+    viewAllHref="/costumes/products"
+    viewAllLabel="All costumes"
+    emptyMessage="Costume picks are being reviewed. Check back soon."
+  />
+
+  <Section variant="muted" labelledby="browse-heading">
+    <h2 id="browse-heading" class="visually-hidden">Browse costumes</h2>
+    <div class="tile">
+      <LinkTile
+        href="/costumes/products"
+        title="All costume products"
+        description="Browse every costume in one place."
+      />
+    </div>
   </Section>
 </BaseLayout>
+
+<style>
+  .tile {
+    max-width: 24rem;
+  }
+</style>

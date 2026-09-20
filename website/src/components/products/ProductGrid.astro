@@ -1,40 +1,46 @@
 ---
-import type { Product } from '@/types';
+import type { ProductListItem } from '@/types';
+import EmptyState from '@/components/ui/EmptyState.astro';
 import ProductCard from './ProductCard.astro';
 
 interface Props {
-  products: Product[];
+  items: ProductListItem[];
+  emptyTitle?: string;
   emptyMessage?: string;
 }
 
-const { products, emptyMessage = 'No products yet. Check back soon.' } = Astro.props;
+const { items, emptyTitle, emptyMessage } = Astro.props;
 ---
 
 {
-  products.length > 0 ? (
-    <ul class="grid">
-      {products.map((product) => (
+  items.length > 0 ? (
+    <ul class="grid" role="list">
+      {items.map((item) => (
         <li>
-          <ProductCard product={product} />
+          <ProductCard item={item} />
         </li>
       ))}
     </ul>
   ) : (
-    <p class="empty">{emptyMessage}</p>
+    <EmptyState title={emptyTitle} message={emptyMessage} />
   )
 }
 
 <style>
+  /* Two columns on phones so shoppers can scan; fluid columns from small tablets up. */
   .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
-    gap: var(--space-4);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-3);
     margin: 0;
     padding: 0;
     list-style: none;
   }
 
-  .empty {
-    color: var(--color-text-muted);
+  @media (min-width: 40rem) {
+    .grid {
+      grid-template-columns: repeat(auto-fill, minmax(14.5rem, 1fr));
+      gap: var(--space-4);
+    }
   }
 </style>

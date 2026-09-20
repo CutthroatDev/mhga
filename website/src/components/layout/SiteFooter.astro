@@ -1,41 +1,123 @@
 ---
 import Container from './Container.astro';
+import Decor from '@/components/decor/Decor.astro';
+import Pumpkin from '@/components/decor/Pumpkin.astro';
 import { navItems, siteConfig } from '@/config/site';
 
 const year = new Date().getFullYear();
+const categoryLinks = navItems.flatMap((item) =>
+  (item.children ?? []).map((child) => ({ href: child.href, label: `${item.label} · ${child.label}` })),
+);
 ---
 
-<footer class="site-footer">
+<footer class="site-footer band">
   <Container>
-    <nav aria-label="Footer">
-      <ul>
-        {navItems.map((item) => <li><a href={item.href}>{item.label}</a></li>)}
-      </ul>
-    </nav>
-    <p class="legal">&copy; {year} {siteConfig.name}</p>
+    <div class="columns">
+      <div class="about">
+        <p class="site-name">{siteConfig.name}</p>
+        <p class="blurb">{siteConfig.description}</p>
+      </div>
+
+      <nav aria-labelledby="footer-explore">
+        <h2 id="footer-explore" class="column-title">Explore</h2>
+        <ul>
+          {navItems.map((item) => <li><a href={item.href}>{item.label}</a></li>)}
+        </ul>
+      </nav>
+
+      <nav aria-labelledby="footer-shop">
+        <h2 id="footer-shop" class="column-title">Shop by category</h2>
+        <ul>
+          {categoryLinks.map((link) => <li><a href={link.href}>{link.label}</a></li>)}
+        </ul>
+      </nav>
+
+      <div class="disclosure">
+        <h2 class="column-title">Disclosure</h2>
+        <p>{siteConfig.affiliateDisclosure}</p>
+      </div>
+    </div>
+
+    <div class="legal">
+      <p>&copy; {year} {siteConfig.name}</p>
+      <!-- Decoration sits in normal flow with a fixed size, so it cannot cover content. -->
+      <Decor position="inline" size="3rem" motion="float">
+        <Pumpkin />
+      </Decor>
+    </div>
   </Container>
 </footer>
 
 <style>
   .site-footer {
-    margin-top: var(--space-5);
-    padding-block: var(--space-4);
-    background: var(--color-surface);
-    border-top: 1px solid var(--color-border);
+    margin-top: auto;
+    padding-block: var(--space-6) var(--space-4);
+  }
+
+  .columns {
+    display: grid;
+    gap: var(--space-5) var(--space-4);
+  }
+
+  @media (min-width: 40rem) {
+    .columns {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .columns {
+      grid-template-columns: 1.4fr 1fr 1fr 1.4fr;
+    }
+  }
+
+  .site-name {
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    font-weight: 700;
+  }
+
+  .blurb,
+  .disclosure p {
+    margin-top: var(--space-2);
+    max-width: 30rem;
+    color: var(--band-muted);
+    font-size: var(--text-sm);
+  }
+
+  .column-title {
+    margin-bottom: var(--space-2);
+    font-family: var(--font-body);
+    font-size: var(--text-xs);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--band-accent);
   }
 
   ul {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2) var(--space-4);
-    margin: 0 0 var(--space-3);
+    display: grid;
+    gap: 0.15rem;
+    margin: 0;
     padding: 0;
     list-style: none;
   }
 
+  li a {
+    display: inline-block;
+    padding-block: 0.3rem;
+    color: var(--band-text);
+    text-underline-offset: 0.2em;
+  }
+
   .legal {
-    margin: 0;
-    color: var(--color-text-muted);
-    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-top: var(--space-5);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--band-line);
+    color: var(--band-muted);
+    font-size: var(--text-sm);
   }
 </style>

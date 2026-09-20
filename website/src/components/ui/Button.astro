@@ -2,14 +2,26 @@
 interface Props {
   /** Renders an <a> when provided, otherwise a <button>. */
   href?: string;
-  variant?: 'primary' | 'secondary';
+  /**
+   * primary / secondary are for light backgrounds.
+   * inverse / inverse-outline are for dark bands.
+   */
+  variant?: 'primary' | 'secondary' | 'inverse' | 'inverse-outline';
+  size?: 'md' | 'lg';
   type?: 'button' | 'submit';
   external?: boolean;
   class?: string;
 }
 
-const { href, variant = 'primary', type = 'button', external = false, class: className } = Astro.props;
-const classes = ['btn', `btn--${variant}`, className];
+const {
+  href,
+  variant = 'primary',
+  size = 'md',
+  type = 'button',
+  external = false,
+  class: className,
+} = Astro.props;
+const classes = ['btn', `btn--${variant}`, `btn--${size}`, className];
 ---
 
 {
@@ -21,6 +33,7 @@ const classes = ['btn', `btn--${variant}`, className];
       rel={external ? 'noopener noreferrer' : undefined}
     >
       <slot />
+      {external && <span class="visually-hidden"> (opens in a new tab)</span>}
     </a>
   ) : (
     <button type={type} class:list={classes}>
@@ -31,22 +44,72 @@ const classes = ['btn', `btn--${variant}`, className];
 
 <style>
   .btn {
-    display: inline-block;
-    padding: var(--space-2) var(--space-4);
-    border: 1px solid var(--color-accent);
-    border-radius: var(--radius);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    min-height: 2.75rem;
+    padding: 0.6rem 1.25rem;
+    border: 2px solid transparent;
+    border-radius: var(--radius-pill);
     font: inherit;
+    font-weight: 700;
+    line-height: 1.2;
+    text-align: center;
     text-decoration: none;
     cursor: pointer;
+    transition:
+      background-color 0.15s ease,
+      color 0.15s ease,
+      border-color 0.15s ease,
+      transform 0.15s ease;
+  }
+
+  .btn--lg {
+    min-height: 3.25rem;
+    padding: 0.8rem 1.75rem;
+    font-size: var(--text-lg);
+  }
+
+  .btn:active {
+    transform: translateY(1px);
   }
 
   .btn--primary {
     background: var(--color-accent);
     color: var(--color-accent-contrast);
   }
+  .btn--primary:hover {
+    background: var(--color-accent-hover);
+    color: var(--color-accent-contrast);
+  }
 
   .btn--secondary {
-    background: transparent;
-    color: var(--color-accent);
+    border-color: var(--color-border-strong);
+    background: var(--color-surface);
+    color: var(--color-text);
+  }
+  .btn--secondary:hover {
+    border-color: var(--color-accent);
+    color: var(--color-accent-hover);
+  }
+
+  .btn--inverse {
+    background: var(--band-accent);
+    color: var(--band-accent-contrast);
+  }
+  .btn--inverse:hover {
+    background: var(--band-text);
+    color: var(--band-accent-contrast);
+  }
+
+  .btn--inverse-outline {
+    border-color: var(--band-line);
+    background: var(--band-surface);
+    color: var(--band-text);
+  }
+  .btn--inverse-outline:hover {
+    border-color: var(--band-accent);
+    color: var(--band-text);
   }
 </style>

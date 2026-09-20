@@ -1,0 +1,46 @@
+---
+import type { ProductListItem } from '@/types';
+import Section from '@/components/layout/Section.astro';
+import SectionHeading from '@/components/layout/SectionHeading.astro';
+import Button from '@/components/ui/Button.astro';
+import ProductGrid from './ProductGrid.astro';
+
+interface Props {
+  id: string;
+  title: string;
+  eyebrow?: string;
+  description?: string;
+  items: ProductListItem[];
+  viewAllHref?: string;
+  viewAllLabel?: string;
+  variant?: 'default' | 'muted';
+  emptyTitle?: string;
+  emptyMessage?: string;
+}
+
+const {
+  id,
+  title,
+  eyebrow,
+  description,
+  items,
+  viewAllHref,
+  viewAllLabel = 'View all',
+  variant = 'default',
+  emptyTitle,
+  emptyMessage,
+} = Astro.props;
+---
+
+<Section variant={variant} labelledby={id}>
+  <SectionHeading id={id} title={title} eyebrow={eyebrow} description={description}>
+    {
+      viewAllHref && (
+        <Button href={viewAllHref} variant="secondary">
+          {viewAllLabel}
+        </Button>
+      )
+    }
+  </SectionHeading>
+  <ProductGrid items={items} emptyTitle={emptyTitle} emptyMessage={emptyMessage} />
+</Section>

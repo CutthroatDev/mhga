@@ -1,12 +1,202 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
+import Philosophy from '@/components/home/Philosophy.astro';
 import PageHeader from '@/components/layout/PageHeader.astro';
 import Section from '@/components/layout/Section.astro';
+import SectionHeading from '@/components/layout/SectionHeading.astro';
+import Button from '@/components/ui/Button.astro';
+import HeadingDecor from '@/components/decor/HeadingDecor.astro';
 ---
 
-<BaseLayout title="About">
-  <PageHeader title="About" />
-  <Section>
-    <p>Placeholder: about this site and how products are curated.</p>
+<BaseLayout
+  title="About"
+  description="Why this site exists: helping you find Halloween products with a worthwhile balance of quality, appearance, and price."
+>
+  <PageHeader
+    eyebrow="About"
+    title="Halloween products worth your money"
+    description="A curated destination for Halloween decorations, costumes, and creative projects that are worth buying or building."
+    tone="default"
+  >
+    <HeadingDecor slot="decor" tone="decorations" />
+  </PageHeader>
+
+  <Section labelledby="problem-heading">
+    <div class="split">
+      <div>
+        <SectionHeading id="problem-heading" eyebrow="The problem" title="Two extremes" />
+        <p class="lead">
+          Halloween products tend to fall into two camps. Many inexpensive products feel cheap
+          once they're out of the package. At the other end are premium products with premium
+          price tags.
+        </p>
+        <p class="lead">
+          Plenty of people want something in between: a decoration or costume that looks good,
+          holds up, and doesn't cost a fortune.
+        </p>
+      </div>
+
+      <figure class="spectrum" aria-label="Price and quality spectrum">
+        <div class="track" aria-hidden="true">
+          <span class="point point--low"></span>
+          <span class="point point--mid"></span>
+          <span class="point point--high"></span>
+        </div>
+        <ul class="labels" role="list">
+          <li>
+            <strong>Very low price</strong>
+            <span>Often feels cheap</span>
+          </li>
+          <li class="mid">
+            <strong>Our focus</strong>
+            <span>A worthwhile balance of quality, appearance, and price</span>
+          </li>
+          <li>
+            <strong>Premium price</strong>
+            <span>Often more than most people want to spend</span>
+          </li>
+        </ul>
+      </figure>
+    </div>
+  </Section>
+
+  <Philosophy
+    id="about-approach-heading"
+    eyebrow="Our approach"
+    title="What we look for"
+    description="We look at individual products, not brands or stores. Nothing here is a claim about a retailer as a whole."
+    principles={[
+      {
+        title: 'Appearance',
+        text: 'Does it look the part once it is set up or worn, not only in a photo?',
+      },
+      {
+        title: 'Quality',
+        text: 'Do the materials and construction suggest it will hold up and be reusable?',
+      },
+      {
+        title: 'Price',
+        text: 'Is what you get a fair match for what you pay?',
+      },
+    ]}
+  />
+
+  <Section labelledby="links-heading">
+    <SectionHeading
+      id="links-heading"
+      eyebrow="How the site works"
+      title="Links to outside retailers"
+    />
+    <p class="lead">
+      We don't sell anything ourselves. Products link to the retailer or vendor that does. Some
+      of those links may become affiliate links in the future; if that happens, we'll say so
+      clearly.
+    </p>
+    <div class="actions">
+      <Button href="/decorations">Browse decorations</Button>
+      <Button href="/costumes" variant="secondary">Browse costumes</Button>
+      <Button href="/diy-projects" variant="secondary">DIY projects</Button>
+    </div>
   </Section>
 </BaseLayout>
+
+<style>
+  .split {
+    display: grid;
+    gap: var(--space-5);
+    align-items: center;
+  }
+
+  @media (min-width: 52rem) {
+    .split {
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    }
+  }
+
+  .lead {
+    max-width: var(--reading-width);
+    font-size: var(--text-lg);
+  }
+
+  .lead + .lead {
+    margin-top: var(--space-3);
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    margin-top: var(--space-4);
+  }
+
+  .spectrum {
+    margin: 0;
+    padding: var(--space-4);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .track {
+    position: relative;
+    height: 0.75rem;
+    border-radius: var(--radius-pill);
+    background: linear-gradient(90deg, #d9cfc2, var(--color-accent-soft) 40%, #d9cfc2);
+  }
+
+  .point {
+    position: absolute;
+    top: 50%;
+    width: 1.1rem;
+    height: 1.1rem;
+    border: 3px solid var(--color-surface);
+    border-radius: 50%;
+    background: var(--color-border-strong);
+    transform: translate(-50%, -50%);
+  }
+
+  .point--low {
+    left: 6%;
+  }
+
+  .point--mid {
+    left: 50%;
+    width: 1.5rem;
+    height: 1.5rem;
+    background: var(--color-accent);
+  }
+
+  .point--high {
+    left: 94%;
+  }
+
+  .labels {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-2);
+    margin: var(--space-3) 0 0;
+    padding: 0;
+    list-style: none;
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+
+  .labels li {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+
+  .labels strong {
+    color: var(--color-text);
+  }
+
+  .labels .mid {
+    text-align: center;
+  }
+
+  .labels li:last-child {
+    text-align: right;
+  }
+</style>

@@ -53,6 +53,35 @@ Cloudflare is the intended deployment platform. Either:
 
 A future private `/admin` area is planned but not built or linked (see `src/admin/README.md`).
 
+## Cute / Scary theme
+
+The header toggle switches the site's *decorative atmosphere* only. It never filters
+or changes products, categories, or content.
+
+- **State:** one attribute on `<html>`: `data-halloween-theme="cute" | "scary"`
+  (default `cute`, set in the server-rendered HTML).
+- **Styling:** `src/styles/tokens.css` holds content tokens (identical in both themes, so
+  content stays readable). `src/styles/theme.css` overrides atmosphere tokens
+  (`--band-*`, `--deco-*`, `--page-bg`) per theme.
+- **Persistence:** the choice is saved in `localStorage` (key `halloween-theme`). A tiny
+  inline script in `BaseLayout` applies it before first paint (no flash). If storage is
+  blocked, the choice still works for the current page. No account needed.
+- **JavaScript:** the toggle script (`ThemeToggle.astro`) and the mobile menu script
+  (`SiteHeader.astro`) are the only client JS. The toggle is hidden when JS is off.
+
+## Decorations
+
+Decorative characters live in `src/components/decor/` as small inline SVG placeholders.
+Each component renders a Cute and a Scary variant, and CSS shows the active one
+(`.only-cute` / `.only-scary`), so there is never a second copy of a page.
+
+- `Decor.astro` positions a piece (corner, size, offset, hide-on-mobile, motion).
+- `HeadingDecor.astro` chooses the piece for each page heading.
+- Decor is `aria-hidden`, sits behind content, ignores the pointer, is absolutely
+  positioned (no layout shift), is mostly hidden below 48rem, and animates only when the
+  user has not requested reduced motion.
+- Real artwork goes in `src/assets/decorations/{shared,cute,scary}/` (see its README).
+
 ## Folder structure
 
 ```
@@ -60,10 +89,13 @@ public/                 Static files served as-is (favicon, etc.)
 src/
   admin/                Placeholder for the future /admin area (README only)
   assets/images/        Images processed by the build
+  assets/decorations/   Future decorative artwork: shared/, cute/, scary/
   components/
-    layout/             Header, footer, container, page header, sub-navigation
-    ui/                 Shared primitives (Button)
-    products/           ProductCard, ProductGrid, ProductDetail
+    layout/             Header, footer, logo, theme toggle, sections, page header, sub-nav
+    ui/                 Shared primitives (Button, Badge, EmptyState, LinkTile, ...)
+    decor/              Decorative SVG pieces and the Decor placement wrapper
+    home/               Homepage sections (Hero, Philosophy)
+    products/           ProductCard, ProductGrid, ProductShelf, ProductDetail
     categories/         CategoryPage (template for product listing pages)
     diy/                DIY project card, grid, and detail
   config/               Site name and navigation
@@ -72,7 +104,7 @@ src/
   layouts/              BaseLayout (document shell)
   pages/                Routes (file-based)
   server/               Placeholder for future ingestion/review/API code (README only)
-  styles/               Global CSS and design tokens
+  styles/               tokens.css, theme.css (Cute/Scary), decor.css, global.css
   types/                TypeScript models (Product, Retailer, DIYProject, ...)
   utils/                Small helpers (route builders, formatting)
 ```

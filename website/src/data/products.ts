@@ -17,6 +17,9 @@ export const products: Product[] = [
     retailerId: 'example-retailer',
     sourceUrl: 'https://example.com/',
     reviewStatus: 'approved',
+    badges: ['Sample badge'],
+    qualityNotes: ['Placeholder note about materials and construction.'],
+    details: [{ label: 'Size', value: 'Placeholder' }],
   },
   {
     id: 'sample-2',

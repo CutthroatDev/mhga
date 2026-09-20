@@ -1,0 +1,45 @@
+---
+interface Props {
+  title: string;
+  eyebrow?: string;
+  description?: string;
+  /** Id for the <h2>, so a Section can reference it with aria-labelledby. */
+  id?: string;
+}
+
+const { title, eyebrow, description, id } = Astro.props;
+---
+
+<div class="section-heading">
+  <div class="text">
+    {eyebrow && <p class="eyebrow">{eyebrow}</p>}
+    <h2 id={id}>{title}</h2>
+    {description && <p class="description">{description}</p>}
+  </div>
+  <div class="action"><slot /></div>
+</div>
+
+<style>
+  .section-heading {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--space-2) var(--space-4);
+    margin-bottom: var(--space-4);
+  }
+
+  .text {
+    max-width: var(--reading-width);
+  }
+
+  .description {
+    margin-top: var(--space-2);
+    color: var(--color-text-muted);
+  }
+
+  /* Inside a dark band, muted text uses the band's muted color. */
+  :global(.band) .description {
+    color: var(--band-muted);
+  }
+</style>

@@ -1,0 +1,36 @@
+---
+// Neutral stand-in for a missing product or project image. This is not decoration:
+// it holds the space (via aspect-ratio) so pages don't shift when real images arrive.
+interface Props {
+  /** CSS aspect-ratio, e.g. "1 / 1" or "3 / 2". */
+  ratio?: string;
+}
+
+const { ratio = '1 / 1' } = Astro.props;
+---
+
+<div class="placeholder" style={`aspect-ratio:${ratio}`} aria-hidden="true">
+  <svg viewBox="0 0 48 48" width="40" height="40" focusable="false">
+    <rect x="6" y="9" width="36" height="30" rx="4"></rect>
+    <circle cx="17" cy="20" r="3.5"></circle>
+    <path d="M8 35l10-9 7 6 6-5 9 8"></path>
+  </svg>
+</div>
+
+<style>
+  .placeholder {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    background: linear-gradient(135deg, var(--color-surface-sunken), #ebe0d1);
+    color: var(--color-border-strong);
+  }
+
+  svg {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+  }
+</style>

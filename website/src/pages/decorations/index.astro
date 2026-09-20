@@ -1,16 +1,68 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
+import HeadingDecor from '@/components/decor/HeadingDecor.astro';
 import PageHeader from '@/components/layout/PageHeader.astro';
 import Section from '@/components/layout/Section.astro';
-import SubNav from '@/components/layout/SubNav.astro';
+import LinkTile from '@/components/ui/LinkTile.astro';
+import ProductShelf from '@/components/products/ProductShelf.astro';
 import { getNavChildren } from '@/config/site';
+import { getApprovedProductListItems } from '@/data-access';
+
+const areas = getNavChildren('/decorations');
+const featured = await getApprovedProductListItems({ section: 'decorations', limit: 4 });
 ---
 
-<BaseLayout title="Decorations">
-  <PageHeader title="Decorations" description="Outdoor and indoor Halloween decorations.">
-    <SubNav items={getNavChildren('/decorations')} label="Decorations" />
+<BaseLayout
+  title="Decorations"
+  description="Outdoor and indoor Halloween decorations worth buying."
+>
+  <PageHeader
+    eyebrow="Decorations"
+    title="Set the scene"
+    description="Outdoor and indoor Halloween decorations that look good and last."
+    tone="decorations"
+  >
+    <HeadingDecor slot="decor" tone="decorations" />
   </PageHeader>
-  <Section>
-    <p>Placeholder: decorations overview.</p>
+
+  <Section labelledby="areas-heading">
+    <h2 id="areas-heading" class="visually-hidden">Browse decorations</h2>
+    <ul class="tiles" role="list">
+      {
+        areas.map((area) => (
+          <li>
+            <LinkTile href={area.href} title={area.label} description={area.description} />
+          </li>
+        ))
+      }
+    </ul>
   </Section>
+
+  <ProductShelf
+    id="featured-heading"
+    variant="muted"
+    eyebrow="Featured"
+    title="Featured decorations"
+    items={featured}
+    viewAllHref="/decorations/products"
+    viewAllLabel="All decorations"
+    emptyMessage="Decoration picks are being reviewed. Check back soon."
+  />
 </BaseLayout>
+
+<style>
+  .tiles {
+    display: grid;
+    gap: var(--space-3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  @media (min-width: 40rem) {
+    .tiles {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: var(--space-4);
+    }
+  }
+</style>

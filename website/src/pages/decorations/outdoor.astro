@@ -1,15 +1,19 @@
 ---
 import CategoryPage from '@/components/categories/CategoryPage.astro';
 import { getNavChildren } from '@/config/site';
-import { getApprovedProducts, getCategoryBySlug } from '@/data-access';
+import { getApprovedProductListItems, getCategoryBySlug } from '@/data-access';
 
 const category = await getCategoryBySlug('decorations', 'outdoor');
-const products = await getApprovedProducts({ section: 'decorations', categorySlug: 'outdoor' });
+const items = await getApprovedProductListItems({ section: 'decorations', categorySlug: 'outdoor' });
 ---
 
 <CategoryPage
+  eyebrow="Decorations"
   title={category?.name ?? 'Outdoor Decorations'}
   description={category?.description}
-  products={products}
+  tone="outdoor"
+  items={items}
   subNavItems={getNavChildren('/decorations')}
+  subNavLabel="Decorations"
+  emptyMessage="Outdoor picks are being reviewed. Check back soon."
 />

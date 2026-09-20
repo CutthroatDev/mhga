@@ -11,6 +11,7 @@ export const diyProjects: DIYProject[] = [
     estimatedTime: '30 minutes',
     materials: ['Black paper', 'Scissors', 'Tape'],
     steps: ['Cut out bat shapes.', 'Tape them to a wall.'],
+    relatedProductIds: ['sample-1'],
     published: true,
   },
 ];

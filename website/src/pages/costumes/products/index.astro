@@ -1,14 +1,17 @@
 ---
 import CategoryPage from '@/components/categories/CategoryPage.astro';
 import { getNavChildren } from '@/config/site';
-import { getApprovedProducts } from '@/data-access';
+import { getApprovedProductListItems } from '@/data-access';
 
-const products = await getApprovedProducts({ section: 'costumes' });
+const items = await getApprovedProductListItems({ section: 'costumes' });
 ---
 
 <CategoryPage
-  title="Costume Products"
-  description="All approved Halloween costume products."
-  products={products}
+  eyebrow="Costumes"
+  title="All costume products"
+  description="Every approved Halloween costume in one place."
+  tone="costumes"
+  items={items}
   subNavItems={getNavChildren('/costumes')}
+  subNavLabel="Costumes"
 />

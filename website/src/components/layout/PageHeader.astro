@@ -3,33 +3,67 @@ import Container from './Container.astro';
 
 interface Props {
   title: string;
+  eyebrow?: string;
   description?: string;
+  /** Gives each area its own tint so category pages feel related but not identical. */
+  tone?: 'default' | 'decorations' | 'outdoor' | 'indoor' | 'costumes' | 'diy';
 }
 
-const { title, description } = Astro.props;
+const { title, eyebrow, description, tone = 'default' } = Astro.props;
 ---
 
-<header class="page-header">
+<header class="page-header band decor-host" data-tone={tone}>
+  <slot name="decor" />
   <Container>
-    <h1>{title}</h1>
-    {description && <p class="description">{description}</p>}
-    <slot />
+    <div class="content">
+      {eyebrow && <p class="eyebrow">{eyebrow}</p>}
+      <h1>{title}</h1>
+      {description && <p class="description">{description}</p>}
+      <slot />
+    </div>
   </Container>
 </header>
 
 <style>
   .page-header {
-    padding-block: var(--space-5) var(--space-4);
-    background: var(--color-surface);
-    border-bottom: 1px solid var(--color-border);
+    --tone: #e0703a;
+    padding-block: var(--space-5) var(--space-5);
+    background:
+      radial-gradient(
+        48rem 18rem at 88% 0%,
+        color-mix(in srgb, var(--tone) var(--glow-strength), transparent),
+        transparent 70%
+      ),
+      var(--band-bg);
+  }
+
+  .page-header[data-tone='decorations'] {
+    --tone: #e0703a;
+  }
+  .page-header[data-tone='outdoor'] {
+    --tone: #3f9a63;
+  }
+  .page-header[data-tone='indoor'] {
+    --tone: #d9a02f;
+  }
+  .page-header[data-tone='costumes'] {
+    --tone: #b455c9;
+  }
+  .page-header[data-tone='diy'] {
+    --tone: #3aa6a0;
+  }
+
+  .content {
+    max-width: var(--reading-width);
   }
 
   h1 {
-    margin: 0 0 var(--space-2);
+    font-size: var(--text-3xl);
   }
 
   .description {
-    margin: 0;
-    color: var(--color-text-muted);
+    margin-top: var(--space-2);
+    font-size: var(--text-lg);
+    color: var(--band-muted);
   }
 </style>

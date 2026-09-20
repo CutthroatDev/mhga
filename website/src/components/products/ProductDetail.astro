@@ -1,65 +1,210 @@
 ---
-import type { Product, Retailer } from '@/types';
+// Product detail layout: image, name, retailer, price, quality notes, description,
+// external purchase link, extra details. Related products are rendered by the page
+// (with ProductShelf) so this component stays focused on a single product.
+import type { ProductListItem } from '@/types';
 import { formatPrice } from '@/utils/format';
+import Badge from '@/components/ui/Badge.astro';
 import Button from '@/components/ui/Button.astro';
+import ImagePlaceholder from '@/components/ui/ImagePlaceholder.astro';
 
 interface Props {
-  product: Product;
-  retailer?: Retailer;
+  item: ProductListItem;
 }
 
-const { product, retailer } = Astro.props;
+const { product, retailer, categories } = Astro.props.item;
 const price = formatPrice(product.price);
+const category = categories[0]?.name;
 ---
 
 <article class="detail">
-  {
-    product.imageUrl ? (
-      <img src={product.imageUrl} alt={product.imageAlt ?? product.name} />
-    ) : (
-      <div class="image-placeholder" aria-hidden="true" />
-    )
-  }
+  <div class="media">
+    {
+      product.imageUrl ? (
+        <img src={product.imageUrl} alt={product.imageAlt ?? product.name} />
+      ) : (
+        <ImagePlaceholder ratio="1 / 1" />
+      )
+    }
+  </div>
+
   <div class="info">
+    {category && <p class="eyebrow">{category}</p>}
     <h1>{product.name}</h1>
-    {price && <p class="price">{price}</p>}
-    <p>{product.description ?? product.summary}</p>
-    {retailer && <p class="retailer">Sold by {retailer.name}</p>}
-    <Button href={product.sourceUrl} external>View at retailer</Button>
+
+    <p class="meta">
+      {price && <span class="price">{price}</span>}
+      {retailer && <span class="retailer">from {retailer.name}</span>}
+    </p>
+
+    {
+      product.badges && product.badges.length > 0 && (
+        <p class="badges">
+          {product.badges.map((badge) => <Badge>{badge}</Badge>)}
+        </p>
+      )
+    }
+
+    <p class="summary">{product.summary}</p>
+
+    <div class="cta">
+      <Button href={product.sourceUrl} external size="lg">
+        {retailer ? `View at ${retailer.name}` : 'View at retailer'}
+      </Button>
+      <p class="cta-note">Opens the retailer's site in a new tab.</p>
+    </div>
+  </div>
+
+  <div class="more">
+    {
+      product.qualityNotes && product.qualityNotes.length > 0 && (
+        <section aria-labelledby="quality-heading">
+          <h2 id="quality-heading">Why it made the cut</h2>
+          <ul class="notes">
+            {product.qualityNotes.map((note) => <li>{note}</li>)}
+          </ul>
+        </section>
+      )
+    }
+
+    {
+      product.description && (
+        <section aria-labelledby="about-heading">
+          <h2 id="about-heading">About this item</h2>
+          <p>{product.description}</p>
+        </section>
+      )
+    }
+
+    {
+      product.details && product.details.length > 0 && (
+        <section aria-labelledby="details-heading">
+          <h2 id="details-heading">Details</h2>
+          <dl class="details">
+            {product.details.map((detail) => (
+              <div>
+                <dt>{detail.label}</dt>
+                <dd>{detail.value}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      )
+    }
   </div>
 </article>
 
 <style>
   .detail {
     display: grid;
-    gap: var(--space-4);
+    gap: var(--space-4) var(--space-5);
   }
 
-  @media (min-width: 48rem) {
+  @media (min-width: 52rem) {
     .detail {
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+      align-items: start;
+    }
+
+    .more {
+      grid-column: 1 / -1;
     }
   }
 
-  .image-placeholder {
-    aspect-ratio: 4 / 3;
+  .media {
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
     background: var(--color-surface);
+    box-shadow: var(--shadow-sm);
   }
 
-  img {
+  .media img {
     width: 100%;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
   }
 
-  h1 {
-    margin-top: 0;
+  .info {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .eyebrow {
+    margin: 0;
+  }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-1) var(--space-3);
   }
 
   .price {
-    font-size: 1.25rem;
-    font-weight: 600;
+    font-family: var(--font-display);
+    font-size: var(--text-2xl);
+    font-weight: 700;
   }
 
   .retailer {
     color: var(--color-text-muted);
+  }
+
+  .badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+  }
+
+  .summary {
+    font-size: var(--text-lg);
+  }
+
+  .cta-note {
+    margin-top: var(--space-2);
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+
+  .more {
+    display: grid;
+    gap: var(--space-5);
+    max-width: var(--reading-width);
+  }
+
+  .more h2 {
+    margin-bottom: var(--space-2);
+    font-size: var(--text-xl);
+  }
+
+  .notes {
+    display: grid;
+    gap: var(--space-2);
+    padding-left: var(--space-4);
+  }
+
+  .details {
+    display: grid;
+    gap: var(--space-1);
+    margin: 0;
+  }
+
+  .details div {
+    display: flex;
+    gap: var(--space-3);
+    padding-block: var(--space-2);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .details dt {
+    flex: 0 0 8rem;
+    color: var(--color-text-muted);
+  }
+
+  .details dd {
+    margin: 0;
+    font-weight: 600;
   }
 </style>

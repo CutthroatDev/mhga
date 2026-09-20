@@ -1,0 +1,47 @@
+---
+// Decorative only. Scary-mode counterpart to Candy. A skeletal hand gripping the edge
+// of a section from the right. Keep it small and low-contrast; not graphic.
+const PALM_LEFT = 76;
+const GAP = 2;
+const SEGMENT_SHARES = [0.4, 0.33, 0.27]; // proximal, middle, distal bones
+
+// Uneven finger lengths make it read as a hand rather than a comb.
+const fingers = [
+  { y: 22, length: 64 },
+  { y: 33.5, length: 72 },
+  { y: 45, length: 66 },
+  { y: 56.5, length: 52 },
+].map((finger) => {
+  let cursor = PALM_LEFT - GAP;
+  const bones = SEGMENT_SHARES.map((share) => {
+    const width = finger.length * share - GAP;
+    const bone = { x: cursor - width, width };
+    cursor = bone.x - GAP;
+    return bone;
+  });
+  return { y: finger.y, bones };
+});
+---
+
+<svg viewBox="0 0 140 90" focusable="false">
+  <rect class="bone" x="72" y="20" width="44" height="48" rx="16"></rect>
+  <rect class="bone" x="112" y="30" width="30" height="8" rx="4"></rect>
+  <rect class="bone" x="112" y="46" width="30" height="8" rx="4"></rect>
+  {
+    fingers.map((finger) =>
+      finger.bones.map((bone) => (
+        <rect class="bone" x={bone.x} y={finger.y} width={bone.width} height="8" rx="4" />
+      )),
+    )
+  }
+</svg>
+
+<style>
+  .bone {
+    fill: var(--deco-ghost);
+    fill-opacity: 0.85;
+    stroke: var(--deco-ink);
+    stroke-opacity: 0.35;
+    stroke-width: 1;
+  }
+</style>

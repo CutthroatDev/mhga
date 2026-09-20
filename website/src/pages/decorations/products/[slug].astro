@@ -2,20 +2,50 @@
 import type { GetStaticPaths } from 'astro';
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import Section from '@/components/layout/Section.astro';
+import Breadcrumbs from '@/components/ui/Breadcrumbs.astro';
 import ProductDetail from '@/components/products/ProductDetail.astro';
-import { getApprovedProducts, getRetailerById } from '@/data-access';
+import ProductShelf from '@/components/products/ProductShelf.astro';
+import { getApprovedProductListItems, getRelatedProducts } from '@/data-access';
 
 export const getStaticPaths = (async () => {
-  const products = await getApprovedProducts({ section: 'decorations' });
-  return products.map((product) => ({ params: { slug: product.slug }, props: { product } }));
+  const items = await getApprovedProductListItems({ section: 'decorations' });
+  return items.map((item) => ({ params: { slug: item.product.slug }, props: { item } }));
 }) satisfies GetStaticPaths;
 
-const { product } = Astro.props;
-const retailer = await getRetailerById(product.retailerId);
+const { item } = Astro.props;
+const related = await getRelatedProducts(item.product);
 ---
 
-<BaseLayout title={product.name} description={product.summary}>
+<BaseLayout title={item.product.name} description={item.product.summary}>
   <Section>
-    <ProductDetail product={product} retailer={retailer} />
+    <div class="crumbs">
+      <Breadcrumbs
+        items={[
+          { label: 'Home', href: '/' },
+          { label: 'Decorations', href: '/decorations' },
+          { label: 'Products', href: '/decorations/products' },
+          { label: item.product.name },
+        ]}
+      />
+    </div>
+    <ProductDetail item={item} />
   </Section>
+
+  {
+    related.length > 0 && (
+      <ProductShelf
+        id="related-heading"
+        variant="muted"
+        title="More decorations"
+        items={related}
+        viewAllHref="/decorations/products"
+      />
+    )
+  }
 </BaseLayout>
+
+<style>
+  .crumbs {
+    margin-bottom: var(--space-4);
+  }
+</style>

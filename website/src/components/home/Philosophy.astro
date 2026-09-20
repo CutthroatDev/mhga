@@ -1,0 +1,80 @@
+---
+// "What we look for" band. Content comes from props so it can be reused (Home, About).
+import Section from '@/components/layout/Section.astro';
+import SectionHeading from '@/components/layout/SectionHeading.astro';
+import Decor from '@/components/decor/Decor.astro';
+import Candy from '@/components/decor/Candy.astro';
+import SkeletalHand from '@/components/decor/SkeletalHand.astro';
+
+interface Principle {
+  title: string;
+  text: string;
+}
+
+interface Props {
+  id?: string;
+  eyebrow?: string;
+  title: string;
+  description?: string;
+  principles: Principle[];
+}
+
+const { id = 'philosophy-title', eyebrow, title, description, principles } = Astro.props;
+---
+
+<Section variant="band" labelledby={id}>
+  <Fragment slot="decor">
+    <!-- Cute and Scary each get their own piece at the section's right edge. -->
+    <Decor position="top-right" size="6rem" x="2%" y="2.5rem" theme="cute" desktopOnly rotate="-8deg">
+      <Candy />
+    </Decor>
+    <Decor position="top-right" size="9rem" x="-1.5rem" y="3rem" theme="scary" desktopOnly>
+      <SkeletalHand />
+    </Decor>
+  </Fragment>
+
+  <SectionHeading id={id} eyebrow={eyebrow} title={title} description={description} />
+  <ul class="principles" role="list">
+    {
+      principles.map((principle) => (
+        <li>
+          <h3>{principle.title}</h3>
+          <p>{principle.text}</p>
+        </li>
+      ))
+    }
+  </ul>
+</Section>
+
+<style>
+  .principles {
+    display: grid;
+    gap: var(--space-3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  @media (min-width: 48rem) {
+    .principles {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: var(--space-4);
+    }
+  }
+
+  li {
+    padding: var(--space-4);
+    border: 1px solid var(--band-line);
+    border-radius: var(--radius-lg);
+    background: var(--band-surface);
+  }
+
+  h3 {
+    margin-bottom: var(--space-2);
+    font-size: var(--text-xl);
+  }
+
+  p {
+    color: var(--band-muted);
+  }
+</style>

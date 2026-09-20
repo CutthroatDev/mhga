@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
+import HeadingDecor from '@/components/decor/HeadingDecor.astro';
 import PageHeader from '@/components/layout/PageHeader.astro';
 import Section from '@/components/layout/Section.astro';
 import DIYProjectGrid from '@/components/diy/DIYProjectGrid.astro';
@@ -8,12 +9,17 @@ import { getPublishedDIYProjects } from '@/data-access';
 const projects = await getPublishedDIYProjects();
 ---
 
-<BaseLayout title="DIY Projects">
+<BaseLayout title="DIY Projects" description="Halloween projects worth building yourself.">
   <PageHeader
-    title="DIY Projects"
-    description="Make your own Halloween decorations and costumes."
-  />
+    eyebrow="DIY projects"
+    title="Build something worth showing off"
+    description="Halloween projects with clear steps and results you'll be proud to display."
+    tone="diy"
+  >
+    <HeadingDecor slot="decor" tone="diy" />
+  </PageHeader>
   <Section>
+    <h2 class="visually-hidden">Projects</h2>
     <DIYProjectGrid projects={projects} />
   </Section>
 </BaseLayout>

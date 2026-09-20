@@ -1,67 +1,315 @@
 ---
-import Container from './Container.astro';
-import { navItems, siteConfig } from '@/config/site';
+import Decor from '@/components/decor/Decor.astro';
+import Bat from '@/components/decor/Bat.astro';
+import Logo from './Logo.astro';
+import ThemeToggle from './ThemeToggle.astro';
+import { navItems } from '@/config/site';
 import { isActivePath } from '@/utils/routes';
 
 const currentPath = Astro.url.pathname;
 ---
 
-<header class="site-header">
-  <Container class="inner">
-    <a class="brand" href="/">{siteConfig.name}</a>
-    <nav aria-label="Main">
-      <ul>
+<header class="site-header band decor-host" data-site-header>
+  <div class="bar">
+    <a class="brand" href="/" aria-label="Home">
+      <Logo />
+    </a>
+
+    <ThemeToggle />
+
+    <button
+      class="menu-button"
+      type="button"
+      aria-expanded="false"
+      aria-controls="site-nav"
+      data-nav-toggle
+    >
+      <span class="menu-icon" aria-hidden="true"></span>
+      <span class="menu-label">Menu</span>
+    </button>
+
+    <!-- Reserved space for the hanging bat, so it can never overlap the navigation. -->
+    <div class="bat-slot" aria-hidden="true">
+      <Decor position="inline" size="2.75rem" motion="sway">
+        <Bat />
+      </Decor>
+    </div>
+
+    <nav id="site-nav" class="site-nav" aria-label="Main" data-site-nav>
+      <ul class="nav-list">
         {
           navItems.map((item) => (
             <li>
               <a
+                class="nav-link"
                 href={item.href}
                 aria-current={isActivePath(currentPath, item.href) ? 'page' : undefined}
               >
                 {item.label}
               </a>
+              {item.children && (
+                <ul class="nav-children">
+                  {item.children.map((child) => (
+                    <li>
+                      <a
+                        class="nav-link nav-link--child"
+                        href={child.href}
+                        aria-current={isActivePath(currentPath, child.href) ? 'page' : undefined}
+                      >
+                        {child.label}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </li>
           ))
         }
       </ul>
     </nav>
-  </Container>
+  </div>
 </header>
 
-<style>
-  .site-header {
-    border-bottom: 1px solid var(--color-border);
+<script>
+  // Mobile menu: a simple disclosure button. Without JS the menu simply stays open.
+  const header = document.querySelector<HTMLElement>('[data-site-header]');
+  const button = header?.querySelector<HTMLButtonElement>('[data-nav-toggle]');
+
+  function setOpen(open: boolean) {
+    if (!header || !button) return;
+    header.toggleAttribute('data-open', open);
+    button.setAttribute('aria-expanded', String(open));
   }
 
-  .site-header :global(.inner) {
+  button?.addEventListener('click', () => setOpen(button.getAttribute('aria-expanded') !== 'true'));
+
+  header?.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && button?.getAttribute('aria-expanded') === 'true') {
+      setOpen(false);
+      button.focus();
+    }
+  });
+</script>
+
+<style>
+  /* Sits above page content so the mobile menu and bat can overlap what follows. */
+  .site-header {
+    position: relative;
+    z-index: 10;
+    border-bottom: 1px solid var(--band-line);
+  }
+
+  .bar {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    justify-content: space-between;
-    gap: var(--space-2) var(--space-4);
-    padding-block: var(--space-3);
+    gap: var(--space-2) var(--space-3);
+    width: 100%;
+    max-width: var(--content-width);
+    margin-inline: auto;
+    padding: var(--space-2) var(--gutter);
   }
 
   .brand {
-    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+    color: var(--band-text);
     text-decoration: none;
   }
 
-  ul {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2) var(--space-4);
+  .brand:hover {
+    color: var(--band-text);
+  }
+
+  /* Mobile: brand on the left, toggle and Menu button pushed to the right. */
+  :global(.site-header .theme-toggle) {
+    margin-left: auto;
+  }
+
+  .menu-button {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: 2.75rem;
+    padding: 0 var(--space-3);
+    border: 1px solid var(--band-line);
+    border-radius: var(--radius-pill);
+    background: var(--band-surface);
+    color: var(--band-text);
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  /* Hamburger built from one element and two shadows, no image needed. */
+  .menu-icon,
+  .menu-icon::before,
+  .menu-icon::after {
+    display: block;
+    width: 1.1rem;
+    height: 2px;
+    border-radius: 2px;
+    background: currentColor;
+  }
+
+  .menu-icon {
+    position: relative;
+  }
+
+  .menu-icon::before,
+  .menu-icon::after {
+    content: '';
+    position: absolute;
+    left: 0;
+  }
+
+  .menu-icon::before {
+    top: -6px;
+  }
+
+  .menu-icon::after {
+    top: 6px;
+  }
+
+  .bat-slot {
+    display: none;
+  }
+
+  /* Mobile navigation panel: full width under the bar. */
+  .site-nav {
+    flex-basis: 100%;
+    padding-bottom: var(--space-2);
+  }
+
+  /* With JS, the panel starts collapsed and opens with the Menu button. */
+  :global(.js) .site-nav {
+    display: none;
+  }
+
+  :global(.js) .site-header[data-open] .site-nav {
+    display: block;
+  }
+
+  .nav-list,
+  .nav-children {
     margin: 0;
     padding: 0;
     list-style: none;
   }
 
-  nav a {
+  .nav-link {
+    display: flex;
+    align-items: center;
+    min-height: 2.75rem;
+    padding: 0 var(--space-2);
+    border-radius: var(--radius-sm);
+    color: var(--band-text);
+    font-weight: 600;
     text-decoration: none;
   }
 
-  nav a:hover,
-  nav a[aria-current='page'] {
-    text-decoration: underline;
+  .nav-link:hover {
+    background: var(--band-surface);
+    color: var(--band-text);
+  }
+
+  .nav-link[aria-current='page'] {
+    color: var(--band-accent);
+  }
+
+  /* Decorations' children are listed inline in the mobile menu. */
+  .nav-children {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+    padding: 0 0 var(--space-2) var(--space-3);
+  }
+
+  .nav-link--child {
+    min-height: 2.25rem;
+    padding: 0 var(--space-3);
+    border: 1px solid var(--band-line);
+    border-radius: var(--radius-pill);
+    font-size: var(--text-sm);
+    font-weight: 500;
+  }
+
+  /* Small phones: keep the bar on one row. The Menu button becomes icon-only (its label
+     stays available to screen readers). */
+  @media (max-width: 26rem) {
+    .bar {
+      gap: var(--space-2);
+    }
+
+    .menu-button {
+      padding: 0 0.85rem;
+    }
+
+    .menu-label {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+    }
+  }
+
+  /* Desktop: one row, no Menu button. */
+  @media (min-width: 60rem) {
+    .bar {
+      flex-wrap: nowrap;
+      gap: var(--space-4);
+      padding-block: var(--space-3);
+    }
+
+    :global(.site-header .theme-toggle) {
+      margin-left: 0;
+    }
+
+    .menu-button {
+      display: none;
+    }
+
+    .bat-slot {
+      display: block;
+      flex: 1;
+      align-self: flex-start;
+      min-width: 0;
+      margin-top: calc(-1 * var(--space-3));
+      text-align: center;
+    }
+
+    .bat-slot :global(.decor) {
+      display: inline-block;
+    }
+
+    .site-nav,
+    :global(.js) .site-nav {
+      display: block;
+      flex-basis: auto;
+      padding-bottom: 0;
+    }
+
+    .nav-list {
+      display: flex;
+      gap: var(--space-1);
+    }
+
+    .nav-link {
+      padding: 0 var(--space-3);
+    }
+
+    .nav-link[aria-current='page'] {
+      box-shadow: inset 0 -3px 0 var(--band-accent);
+      border-radius: 0;
+    }
+
+    /* Sub-links live on the section pages on desktop, not in the header. */
+    .nav-children {
+      display: none;
+    }
   }
 </style>

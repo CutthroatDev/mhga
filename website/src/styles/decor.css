@@ -1,0 +1,116 @@
+/*
+ * Decorative elements: placement and motion.
+ *
+ * Rules that keep decoration from ever hurting shopping:
+ *  - Decor is absolutely positioned inside a .decor-host, so it takes no space and can
+ *    never shift layout.
+ *  - Decor sits at z-index -1 inside the host's own stacking context (isolation), so it
+ *    is always painted BEHIND text, cards, and buttons, and it ignores the pointer.
+ *  - Most decor is hidden below 48rem (.decor--desktop-only).
+ *  - Motion is slow, small, transform-only, and disabled for prefers-reduced-motion.
+ */
+
+.decor-host {
+  position: relative;
+  isolation: isolate;
+  overflow-x: clip;
+}
+
+.decor {
+  position: absolute;
+  z-index: -1;
+  width: var(--decor-size, 6rem);
+  line-height: 0;
+  pointer-events: none;
+  user-select: none;
+  rotate: var(--decor-rotate, 0deg);
+}
+
+.decor svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* Placement. Nudge with --decor-x / --decor-y (negative values push past the edge). */
+.decor--top-left {
+  top: var(--decor-y, 0);
+  left: var(--decor-x, 0);
+}
+.decor--top-right {
+  top: var(--decor-y, 0);
+  right: var(--decor-x, 0);
+}
+.decor--bottom-left {
+  bottom: var(--decor-y, 0);
+  left: var(--decor-x, 0);
+}
+.decor--bottom-right {
+  bottom: var(--decor-y, 0);
+  right: var(--decor-x, 0);
+}
+/* In normal flow (used inside a fixed-size slot, e.g. the header bat or footer pumpkin). */
+.decor--inline {
+  position: relative;
+  z-index: auto;
+}
+
+.decor--desktop-only {
+  display: none;
+}
+
+@media (min-width: 48rem) {
+  .decor--desktop-only {
+    display: block;
+  }
+}
+
+/* Motion: only when the user has not asked for reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .decor--float {
+    animation: decor-float 10s ease-in-out infinite;
+  }
+
+  .decor--sway {
+    transform-origin: 50% 0;
+    animation: decor-sway 8s ease-in-out infinite;
+  }
+
+  .decor .blink {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: decor-blink 9s ease-in-out infinite;
+  }
+}
+
+@keyframes decor-float {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -0.4rem;
+  }
+}
+
+@keyframes decor-sway {
+  0%,
+  100% {
+    rotate: -3deg;
+  }
+  50% {
+    rotate: 3deg;
+  }
+}
+
+/* Eyes stay open almost always, then blink once. */
+@keyframes decor-blink {
+  0%,
+  92%,
+  100% {
+    transform: scaleY(1);
+  }
+  95% {
+    transform: scaleY(0.1);
+  }
+}

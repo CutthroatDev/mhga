@@ -1,0 +1,77 @@
+/*
+ * Cute / Scary theme.
+ *
+ * One attribute on <html> drives everything: data-halloween-theme="cute" | "scary".
+ * It only changes atmosphere: band colors, glow, decoration colors, and which
+ * decorative variant is shown. It never touches products, categories, or content.
+ *
+ * Cute is the default (also set in the server-rendered HTML). A tiny inline script in
+ * BaseLayout applies the saved choice before first paint.
+ */
+
+:root,
+[data-halloween-theme='cute'] {
+  --page-bg: #faf5ee;
+
+  /* "Bands" are the dark atmospheric areas: header, hero, page headings, footer. */
+  --band-bg: linear-gradient(160deg, #3a2159 0%, #4d2a6e 55%, #683080 100%);
+  --band-bg-solid: #3a2159;
+  --band-text: #fff7ec;
+  --band-muted: #e3d5ee;
+  --band-accent: #ffb454;
+  --band-accent-contrast: #2a1405;
+  --band-line: rgb(255 255 255 / 0.18);
+  --band-surface: rgb(255 255 255 / 0.1);
+  --band-focus: #ffd9a0;
+  --band-glow: #e58fd0;
+  --glow-strength: 34%;
+
+  /* Decoration palette (used by src/components/decor/*) */
+  --deco-ghost: #ffffff;
+  --deco-bat: #f0d9ff;
+  --deco-ink: #3a2159;
+  --deco-blush: #ff9db4;
+  --deco-pumpkin: #ff8a1f;
+  --deco-pumpkin-shade: #e56a0a;
+  --deco-stem: #6fae55;
+  --deco-eye: #ffffff;
+  --deco-pupil: #3a2159;
+  --deco-candy: #ff7eb6;
+  --deco-candy-wrap: #ffd3e6;
+}
+
+[data-halloween-theme='scary'] {
+  --page-bg: #f1ece6;
+
+  --band-bg: linear-gradient(160deg, #0f0c14 0%, #1b1323 55%, #2a1a26 100%);
+  --band-bg-solid: #0f0c14;
+  --band-text: #f3ece6;
+  --band-muted: #c4b8c9;
+  --band-accent: #f08a4b;
+  --band-accent-contrast: #1a0d05;
+  --band-line: rgb(255 255 255 / 0.14);
+  --band-surface: rgb(255 255 255 / 0.07);
+  --band-focus: #ffc9a0;
+  --band-glow: #5f9a74;
+  --glow-strength: 24%;
+
+  --deco-ghost: #dfe7ea;
+  --deco-bat: #4a3d5e;
+  --deco-ink: #0f0c14;
+  --deco-blush: #dfe7ea;
+  --deco-pumpkin: #b4520f;
+  --deco-pumpkin-shade: #8f3f0a;
+  --deco-stem: #55613f;
+  --deco-eye: #ffc857;
+  --deco-pupil: #0f0c14;
+  --deco-candy: #7a2f3a;
+  --deco-candy-wrap: #b9a99a;
+}
+
+/* Show only the variant for the active theme. Decorative components render both
+   variants (each is a tiny inline SVG) and CSS picks one, so there is one page and
+   one code path, never two versions of a page. */
+[data-halloween-theme='cute'] .only-scary,
+[data-halloween-theme='scary'] .only-cute {
+  display: none !important;
+}

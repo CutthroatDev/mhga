@@ -1,3 +1,5 @@
+import type { Retailer } from './retailer';
+
 /** Top-level product sections. Values double as the first URL segment. */
 export type ProductSection = 'decorations' | 'costumes';
 
@@ -18,6 +20,12 @@ export interface ProductPrice {
   currency: string;
 }
 
+/** A labelled fact shown in the "Details" list on a product page, e.g. Size / 6 ft. */
+export interface ProductDetailItem {
+  label: string;
+  value: string;
+}
+
 export interface Product {
   id: string;
   /** URL segment: /<section>/products/<slug> */
@@ -34,4 +42,17 @@ export interface Product {
   /** Link to the product on the retailer's site. */
   sourceUrl: string;
   reviewStatus: ProductReviewStatus;
+  /** Short optional labels shown on cards, e.g. "Editor's pick". Not a rating. */
+  badges?: string[];
+  /** Short notes on why this product made the cut. */
+  qualityNotes?: string[];
+  /** Additional facts (size, material, ...). */
+  details?: ProductDetailItem[];
+}
+
+/** A product together with the related records a card or detail page needs to render. */
+export interface ProductListItem {
+  product: Product;
+  retailer?: Retailer;
+  categories: ProductCategory[];
 }

@@ -14,17 +14,35 @@ const pageTitle = title ? `${title} | ${siteConfig.name}` : siteConfig.name;
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="en" data-halloween-theme="cute">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description} />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>{pageTitle}</title>
+    <!--
+      Runs before first paint so the saved Cute/Scary choice never flashes the wrong
+      theme. The "js" class reveals controls that need JavaScript. The storage key must
+      match src/components/layout/ThemeToggle.astro.
+    -->
+    <script is:inline>
+      (function () {
+        var root = document.documentElement;
+        root.classList.add('js');
+        try {
+          var theme = localStorage.getItem('halloween-theme');
+          if (theme === 'cute' || theme === 'scary') {
+            root.setAttribute('data-halloween-theme', theme);
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
+    <a class="skip-link" href="#main">Skip to content</a>
     <SiteHeader />
-    <main>
+    <main id="main" tabindex="-1">
       <slot />
     </main>
     <SiteFooter />

@@ -1,0 +1,158 @@
+---
+// Cute / Scary switch. It only changes the site's decorative atmosphere (see
+// src/styles/theme.css); it never filters or changes products. Hidden until JavaScript
+// has run, because without JS it could not work.
+---
+
+<div class="theme-toggle" role="group" aria-label="Halloween theme" aria-describedby="theme-hint">
+  <button type="button" data-theme-option="cute" aria-pressed="true">
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+      <path class="fill" d="M12 6.5c-5 0-8.5 3-8.5 7s3.5 6 8.5 6 8.5-2 8.5-6-3.5-7-8.5-7z"></path>
+      <path class="stroke" d="M12 6.5c0-1.5.6-2.8 2-3.5"></path>
+      <circle class="eye" cx="8.8" cy="13" r="1.3"></circle>
+      <circle class="eye" cx="15.2" cy="13" r="1.3"></circle>
+      <path class="mouth" d="M9 16q3 2.5 6 0"></path>
+    </svg>
+    <span class="label">Cute</span>
+  </button>
+  <button type="button" data-theme-option="scary" aria-pressed="false">
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+      <path
+        class="fill"
+        fill-rule="evenodd"
+        d="M12 3C7.6 3 4 6.4 4 10.6c0 2.4 1.1 4.3 3 5.6V19c0 .6.4 1 1 1h8c.6 0 1-.4 1-1v-2.8c1.9-1.3 3-3.2 3-5.6C20 6.4 16.4 3 12 3zM8.5 10.2a1.9 1.9 0 1 0 0 3.8 1.9 1.9 0 0 0 0-3.8zm7 0a1.9 1.9 0 1 0 0 3.8 1.9 1.9 0 0 0 0-3.8z"
+      ></path>
+    </svg>
+    <span class="label">Scary</span>
+  </button>
+  <span id="theme-hint" class="visually-hidden">
+    Changes the decorations only. Products and content are not affected.
+  </span>
+</div>
+
+<script>
+  // The storage key must match the inline script in src/layouts/BaseLayout.astro,
+  // which applies the saved theme before first paint.
+  const STORAGE_KEY = 'halloween-theme';
+  type Theme = 'cute' | 'scary';
+
+  const root = document.documentElement;
+  const isTheme = (value: unknown): value is Theme => value === 'cute' || value === 'scary';
+  const options = document.querySelectorAll<HTMLButtonElement>('[data-theme-option]');
+
+  function currentTheme(): Theme {
+    const value = root.dataset.halloweenTheme;
+    return isTheme(value) ? value : 'cute';
+  }
+
+  function showPressed(theme: Theme) {
+    options.forEach((button) => {
+      button.setAttribute('aria-pressed', String(button.dataset.themeOption === theme));
+    });
+  }
+
+  function applyTheme(theme: Theme) {
+    root.dataset.halloweenTheme = theme;
+    showPressed(theme);
+  }
+
+  options.forEach((button) => {
+    button.addEventListener('click', () => {
+      const theme = button.dataset.themeOption;
+      if (!isTheme(theme)) return;
+      applyTheme(theme);
+      try {
+        localStorage.setItem(STORAGE_KEY, theme);
+      } catch {
+        // Storage can be blocked (private mode, site settings). The choice still applies
+        // for this page; it just won't be remembered.
+      }
+    });
+  });
+
+  // Keep other open tabs in sync.
+  window.addEventListener('storage', (event) => {
+    if (event.key === STORAGE_KEY && isTheme(event.newValue)) applyTheme(event.newValue);
+  });
+
+  showPressed(currentTheme());
+</script>
+
+<style>
+  .theme-toggle {
+    display: none;
+    padding: 3px;
+    border: 1px solid var(--band-line);
+    border-radius: var(--radius-pill);
+    background: var(--band-surface);
+  }
+
+  :global(.js) .theme-toggle {
+    display: inline-flex;
+  }
+
+  button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: 2.25rem;
+    padding: 0 0.75rem;
+    border: 0;
+    border-radius: var(--radius-pill);
+    background: transparent;
+    color: var(--band-text);
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 700;
+    cursor: pointer;
+    transition:
+      background-color 0.15s ease,
+      color 0.15s ease;
+  }
+
+  button:hover {
+    background: var(--band-line);
+  }
+
+  button[aria-pressed='true'] {
+    background: var(--band-accent);
+    color: var(--band-accent-contrast);
+  }
+
+  svg {
+    flex: none;
+  }
+
+  .fill {
+    fill: currentColor;
+  }
+  .stroke,
+  .mouth {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.6;
+    stroke-linecap: round;
+  }
+  .eye {
+    fill: var(--band-bg-solid);
+  }
+  .mouth {
+    stroke: var(--band-bg-solid);
+  }
+
+  /* Very small screens: icon-only (the label stays available to screen readers). */
+  @media (max-width: 26rem) {
+    .label {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+    }
+
+    button {
+      padding: 0 0.6rem;
+    }
+  }
+</style>

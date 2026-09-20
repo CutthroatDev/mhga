@@ -1,0 +1,47 @@
+---
+import { siteConfig } from '@/config/site';
+---
+
+<span class="logo">
+  <!-- PLACEHOLDER mark; replace with the real logo when branding is decided. -->
+  <svg class="mark" viewBox="0 0 32 32" width="30" height="30" aria-hidden="true" focusable="false">
+    <path class="moon" d="M22 4a12 12 0 1 0 6 21A10 10 0 0 1 22 4z"></path>
+    <circle class="star" cx="25" cy="9" r="1.6"></circle>
+  </svg>
+  <span class="name">{siteConfig.name}</span>
+</span>
+
+<style>
+  .logo {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .moon {
+    fill: var(--band-accent);
+  }
+
+  .star {
+    fill: var(--band-text);
+  }
+
+  .name {
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+  }
+
+  /* Very narrow phones (320px): drop the mark so the header stays on one row. */
+  @media (max-width: 22rem) {
+    .mark {
+      display: none;
+    }
+
+    .name {
+      font-size: 1.1rem;
+    }
+  }
+</style>

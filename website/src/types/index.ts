@@ -1,6 +1,8 @@
 export type {
   Product,
   ProductCategory,
+  ProductDetailItem,
+  ProductListItem,
   ProductPrice,
   ProductReviewStatus,
   ProductSection,

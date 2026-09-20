@@ -1,15 +1,35 @@
 ---
 import Container from './Container.astro';
+
+interface Props {
+  /** default: page background. muted: slightly darker. band: dark atmospheric area. */
+  variant?: 'default' | 'muted' | 'band';
+  /** Id of the heading that names this section (renders a <section> landmark). */
+  labelledby?: string;
+  id?: string;
+}
+
+const { variant = 'default', labelledby, id } = Astro.props;
+const Tag = labelledby ? 'section' : 'div';
 ---
 
-<Container>
-  <div class="section">
+<Tag
+  id={id}
+  aria-labelledby={labelledby}
+  class:list={['section', `section--${variant}`, { band: variant === 'band', 'decor-host': variant === 'band' }]}
+>
+  {variant === 'band' && <slot name="decor" />}
+  <Container>
     <slot />
-  </div>
-</Container>
+  </Container>
+</Tag>
 
 <style>
   .section {
-    padding-block: var(--space-4);
+    padding-block: var(--section-space);
+  }
+
+  .section--muted {
+    background: var(--color-surface-sunken);
   }
 </style>

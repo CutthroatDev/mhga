@@ -1,0 +1,44 @@
+---
+// One quiet decoration per page heading, chosen by tone. Pass it to PageHeader's
+// `decor` slot. To change what appears where, edit only this file.
+import Decor from './Decor.astro';
+import Ghost from './Ghost.astro';
+import Pumpkin from './Pumpkin.astro';
+import Eyes from './Eyes.astro';
+import Bat from './Bat.astro';
+
+interface Props {
+  tone?: 'default' | 'decorations' | 'outdoor' | 'indoor' | 'costumes' | 'diy';
+}
+
+const { tone = 'default' } = Astro.props;
+---
+
+{
+  tone === 'outdoor' && (
+    <Decor position="bottom-right" size="4.5rem" x="6%" y="-1rem" desktopOnly motion="float">
+      <Ghost />
+    </Decor>
+  )
+}
+{
+  tone === 'indoor' && (
+    <Decor position="bottom-right" size="6rem" x="8%" y="-1rem" desktopOnly>
+      <Eyes />
+    </Decor>
+  )
+}
+{
+  (tone === 'decorations' || tone === 'diy') && (
+    <Decor position="bottom-right" size="5rem" x="7%" y="-0.75rem" desktopOnly>
+      <Pumpkin />
+    </Decor>
+  )
+}
+{
+  tone === 'costumes' && (
+    <Decor position="top-right" size="3.5rem" x="9%" y="0" desktopOnly motion="sway">
+      <Bat />
+    </Decor>
+  )
+}
