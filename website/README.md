@@ -150,6 +150,12 @@ repository classes. No ORM, no other database.
 - **Schema:** `migrations/0001_initial_schema.sql`. Tables: `categories`, `products`,
   `retailers`, `product_offers`, `diy_projects`, `diy_project_products`. IDs are
   app-generated UUID text; URLs use slugs; money is integer cents; timestamps are ISO 8601 UTC.
+- **Required categories are created by migrations**, not by the seed. `migrations/0002_bootstrap_categories.sql`
+  inserts the structural hierarchy the public catalog depends on: **Decorations** (`decorations`) with
+  **Outdoor Decorations** (`outdoor`) and **Indoor Decorations** (`indoor`) beneath it, and **Costumes**
+  (`costumes`). It uses fixed IDs and `ON CONFLICT (id) DO NOTHING`, so it is safe on a database that
+  already has the rows and never overwrites them. A fresh database (including production) gets the tree
+  from `npm run db:migrate:*` alone.
 - **Migrations are the authoritative schema history.** They are committed. Never edit a
   migration that has been applied anywhere; add a new numbered file.
 - **The public site reads product data from D1** through `src/data-access/` (see *Public
@@ -201,9 +207,10 @@ npm run db:query:local -- "SELECT slug, review_status FROM products"
 npm run db:migrations:list:local
 ```
 
-The seed (`seeds/local-dev.sql`) is placeholder data: approved, pending and rejected
+The seed (`seeds/local-dev.sql`) is placeholder **sample** data only: approved, pending and rejected
 products, two retailers, several offers, a published and a draft project, and ordered
-project-product links. It is re-runnable. There is deliberately **no remote seed script**.
+project-product links. It does **not** create categories: it looks them up by slug, so run
+`npm run db:migrate:local` first. It is re-runnable. There is deliberately **no remote seed script**.
 
 To reset the local database, delete the local state (this only removes local files):
 `rm -rf .wrangler/state`, then migrate and seed again.
@@ -235,8 +242,9 @@ npm run db:migrate:remote           # ⚠️ applies pending migrations to the R
 
 Wrangler asks you to confirm before applying. Consider a backup first:
 `npx wrangler d1 export halloween-site-db --remote --output=backup.sql` (read-only).
-Migrations do not add reference data such as categories; that is a separate, deliberate
-step for later. Seed data is local-only.
+Migration `0002` adds the required categories (structural reference data), so applying migrations
+to a fresh production database is enough for them to exist. Sample data (products, retailers, offers)
+is never part of a migration: the seed is local-only.
 
 ## Admin (local development only)
 
@@ -307,7 +315,7 @@ npm test              # run once, non-interactive
 npm run test:watch    # re-run on change while developing
 ```
 
-A small [Vitest](https://vitest.dev) suite (10 tests) that protects the **product visibility and
+A small [Vitest](https://vitest.dev) suite (11 tests) that protects the **product visibility and
 review rules**, the rules that keep unreviewed or unsafe products off the public site. It runs the
 real repositories, with nothing mocked.
 
@@ -315,7 +323,8 @@ real repositories, with nothing mocked.
 public; an inactive retailer, a discontinued-only offer, or an unsafe (non-http/https) purchase URL
 keeps a product hidden; review notes and admin fields never appear in public output; pending → approved
 makes a product public immediately, and approved → rejected/pending hides it; the primary eligible
-offer wins, else the cheapest eligible one. Each "hidden" case includes an eligible control product, so
+offer wins, else the cheapest eligible one; and the required category hierarchy exists on a freshly
+migrated database (no seed) with products resolving through it. Each "hidden" case includes an eligible control product, so
 a broken fixture cannot pass by accident.
 
 **How it works:** each test file builds its own **in-memory D1** (Miniflare, the same engine as local D1)

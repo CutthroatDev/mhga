@@ -78,6 +78,12 @@ folder structure.
 - Cloudflare D1 is the primary database (binding `DB`). Do not add another database or an
   ORM without an explicit architectural decision.
 - Schema changes go in a NEW numbered file in `migrations/`. Never edit an applied migration.
+- **Required structural/reference data belongs in migrations (or an explicit bootstrap mechanism), not
+  only in local development seeds.** The category hierarchy is created by
+  `migrations/0002_bootstrap_categories.sql`; `seeds/local-dev.sql` holds sample data only and must
+  never be the sole source of anything production needs. Bootstrap inserts must be idempotent
+  (`ON CONFLICT (id) DO NOTHING`, never `INSERT OR IGNORE`, which would hide slug clashes). To change
+  the categories, add a new numbered migration.
 - Never modify production data from normal development commands. `dev`, `build`, `check`
   and all `*:local` scripts touch only the local simulation. Do not run `*:remote` scripts
   (or any `--remote` command) unless the user explicitly asks; never add a remote seed.

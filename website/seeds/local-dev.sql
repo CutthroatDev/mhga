@@ -3,10 +3,16 @@
 -- Run it only against the LOCAL database:   npm run db:seed:local
 -- There is intentionally no remote seed script. Never run this against production.
 --
--- Reuses the conceptual samples from src/data/ (porch skeleton, pending candle, witch hat,
--- paper bats) and adds just enough to exercise every rule: an approved, a pending, and a
+-- Placeholder samples (porch skeleton, pending candle, witch hat, paper bats) that add just enough to exercise every rule: an approved, a pending, and a
 -- rejected product; two retailers; multiple offers for one product; a published and a
 -- draft DIY project; ordered project <-> product links.
+--
+-- Requires the migrations to have run first (npm run db:migrate:local). The category hierarchy
+-- (decorations > outdoor, indoor; costumes) is structural data created by
+-- migrations/0002_bootstrap_categories.sql, NOT by this file: the seed only looks categories up by
+-- slug and never inserts, updates, or deletes them, so there is a single definition of the tree.
+-- (If the migration has not run, the product inserts below fail with a NOT NULL error on
+-- products.category_id: run npm run db:migrate:local first.)
 --
 -- Re-runnable: it first removes only rows with these seed ids, then inserts them again.
 -- (Deleting a product/project cascades to its offers/links; children are removed first.)
@@ -24,21 +30,6 @@ DELETE FROM products WHERE id IN (
 DELETE FROM retailers WHERE id IN (
   '00000000-0000-4000-8000-00000000e001', '00000000-0000-4000-8000-00000000e002'
 );
-DELETE FROM categories WHERE id IN (
-  '00000000-0000-4000-8000-00000000c002', '00000000-0000-4000-8000-00000000c003'
-);
-DELETE FROM categories WHERE id IN (
-  '00000000-0000-4000-8000-00000000c001', '00000000-0000-4000-8000-00000000c004'
-);
-
--- ---------------------------------------------------------------------------
--- Categories: decorations > (outdoor, indoor); costumes
--- ---------------------------------------------------------------------------
-INSERT INTO categories (id, slug, name, description, parent_id, sort_order) VALUES
-  ('00000000-0000-4000-8000-00000000c001', 'decorations', 'Decorations', 'Outdoor and indoor Halloween decorations.', NULL, 1),
-  ('00000000-0000-4000-8000-00000000c004', 'costumes', 'Costumes', 'Halloween costumes for everyone.', NULL, 2),
-  ('00000000-0000-4000-8000-00000000c002', 'outdoor', 'Outdoor Decorations', 'Yard, porch, and front-door Halloween decorations.', '00000000-0000-4000-8000-00000000c001', 1),
-  ('00000000-0000-4000-8000-00000000c003', 'indoor', 'Indoor Decorations', 'Halloween decorations for inside the home.', '00000000-0000-4000-8000-00000000c001', 2);
 
 -- ---------------------------------------------------------------------------
 -- Retailers (fake)
@@ -59,7 +50,7 @@ INSERT INTO products (
   ('00000000-0000-4000-8000-00000000a001', 'sample-porch-skeleton', 'Sample Porch Skeleton',
    'Placeholder outdoor decoration.',
    'Placeholder product used to exercise the product detail layout.',
-   '00000000-0000-4000-8000-00000000c002',
+   (SELECT id FROM categories WHERE slug = 'outdoor'),
    '["Placeholder note about materials and construction."]',
    '[{"label":"Size","value":"Placeholder"}]',
    '["Sample badge"]',
@@ -69,7 +60,7 @@ INSERT INTO products (
   ('00000000-0000-4000-8000-00000000a002', 'sample-pending-candle', 'Sample Pending Candle',
    'Not approved, so it must not appear anywhere on the public site.',
    NULL,
-   '00000000-0000-4000-8000-00000000c003',
+   (SELECT id FROM categories WHERE slug = 'indoor'),
    NULL, NULL, NULL,
    'pending', NULL, NULL),
 
@@ -77,7 +68,7 @@ INSERT INTO products (
   ('00000000-0000-4000-8000-00000000a003', 'sample-witch-hat', 'Sample Witch Hat',
    'Placeholder costume product.',
    NULL,
-   '00000000-0000-4000-8000-00000000c004',
+   (SELECT id FROM categories WHERE slug = 'costumes'),
    NULL, NULL, NULL,
    'approved', NULL, '2026-01-01T00:00:00Z'),
 
@@ -85,7 +76,7 @@ INSERT INTO products (
   ('00000000-0000-4000-8000-00000000a004', 'sample-rejected-inflatable', 'Sample Rejected Inflatable',
    'Rejected during review, so it must not appear anywhere on the public site.',
    NULL,
-   '00000000-0000-4000-8000-00000000c002',
+   (SELECT id FROM categories WHERE slug = 'outdoor'),
    NULL, NULL, NULL,
    'rejected', 'PLACEHOLDER internal note: rejected for local testing. Must never be public.', '2026-01-01T00:00:00Z');
 

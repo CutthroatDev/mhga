@@ -54,7 +54,11 @@ async function applyMigrations(d1: D1Database): Promise<void> {
 
 export interface TestDatabase {
   d1: D1Database;
-  /** Removes every row from every table (keeps the schema), so each test starts empty. */
+  /**
+   * Removes every row from every table except `categories` (keeps the schema), so each test
+   * starts empty. Categories are structural reference data created by the migrations, so they
+   * are kept: the tests use the real hierarchy instead of defining their own.
+   */
   clear(): Promise<void>;
   dispose(): Promise<void>;
 }
@@ -81,7 +85,9 @@ export async function createTestDatabase(): Promise<TestDatabase> {
       // One transaction; foreign keys are checked at commit, when everything is gone.
       await d1.batch([
         d1.prepare('PRAGMA defer_foreign_keys = true'),
-        ...tables.results.map((table) => d1.prepare(`DELETE FROM "${table.name}"`)),
+        ...tables.results
+          .filter((table) => table.name !== 'categories')
+          .map((table) => d1.prepare(`DELETE FROM "${table.name}"`)),
       ]);
     },
     async dispose() {

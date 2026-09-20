@@ -3,8 +3,9 @@
  *
  * Fixtures go through the REAL repositories (the same ones the admin uses), so they follow
  * the real workflow: a product is created pending, then moved to approved/rejected with
- * changeReviewStatus. Only categories are inserted with SQL, because there is no category
- * write repository yet.
+ * changeReviewStatus. Categories are NOT created here: the required hierarchy (decorations >
+ * outdoor, indoor; costumes) comes from migrations/0002_bootstrap_categories.sql, and the
+ * tests look those real categories up by slug.
  *
  * Repositories are created fresh on every access, like a real request does, so nothing is
  * cached between calls.
@@ -14,8 +15,6 @@ import type { OfferAvailability, ProductOffer, RetailerRecord, AdminProduct } fr
 import { createRepositories } from '../../src/server/repositories';
 import { createTestDatabase, type TestDatabase } from './test-db';
 
-const CATEGORY = { decorations: 'cat-decorations', outdoor: 'cat-outdoor' } as const;
-
 export class CatalogWorld {
   private constructor(private readonly db: TestDatabase) {}
 
@@ -23,17 +22,9 @@ export class CatalogWorld {
     return new CatalogWorld(await createTestDatabase());
   }
 
-  /** Empties the database and inserts the one category tree the tests use. */
+  /** Empties everything except the migration-created categories. */
   async reset(): Promise<void> {
     await this.db.clear();
-    await this.db.d1.batch([
-      this.db.d1
-        .prepare('INSERT INTO categories (id, slug, name, parent_id) VALUES (?, ?, ?, ?)')
-        .bind(CATEGORY.decorations, 'decorations', 'Decorations', null),
-      this.db.d1
-        .prepare('INSERT INTO categories (id, slug, name, parent_id) VALUES (?, ?, ?, ?)')
-        .bind(CATEGORY.outdoor, 'outdoor', 'Outdoor', CATEGORY.decorations),
-    ]);
   }
 
   dispose(): Promise<void> {
@@ -58,14 +49,16 @@ export class CatalogWorld {
   /** Created pending (as in real life), then moved to `status` if it is not pending. */
   async product(
     slug: string,
-    options: { status?: ProductReviewStatus; reviewNotes?: string } = {},
+    options: { status?: ProductReviewStatus; reviewNotes?: string; category?: string } = {},
   ): Promise<AdminProduct> {
-    const { adminProducts } = this.repos;
+    const { adminProducts, categories } = this.repos;
+    const category = await categories.getBySlug(options.category ?? 'outdoor');
+    if (!category) throw new Error(`Category "${options.category ?? 'outdoor'}" is missing: are the migrations applied?`);
     const created = await adminProducts.create({
       slug,
       name: `Product ${slug}`,
       summary: `Summary of ${slug}`,
-      categoryId: CATEGORY.outdoor,
+      categoryId: category.id,
       ...(options.reviewNotes ? { reviewNotes: options.reviewNotes } : {}),
     });
     const status = options.status ?? 'approved';
@@ -89,8 +82,8 @@ export class CatalogWorld {
   }
 
   /** Approved + active retailer + valid http(s) offer: the baseline that IS public. */
-  async eligibleProduct(slug: string): Promise<AdminProduct> {
-    const product = await this.product(slug);
+  async eligibleProduct(slug: string, options: { category?: string } = {}): Promise<AdminProduct> {
+    const product = await this.product(slug, options);
     await this.offer(product, await this.retailer(`shop-${slug}`), { primary: true });
     return product;
   }
