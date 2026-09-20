@@ -1,4 +1,7 @@
 ---
+// On-demand: shows live products from D1, so an approval/removal is visible immediately.
+export const prerender = false;
+
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import HeadingDecor from '@/components/decor/HeadingDecor.astro';
 import PageHeader from '@/components/layout/PageHeader.astro';
@@ -6,10 +9,10 @@ import Section from '@/components/layout/Section.astro';
 import LinkTile from '@/components/ui/LinkTile.astro';
 import ProductShelf from '@/components/products/ProductShelf.astro';
 import { getNavChildren } from '@/config/site';
-import { getApprovedProductListItems } from '@/data-access';
+import { getPublicCatalog } from '@/data-access';
 
 const areas = getNavChildren('/decorations');
-const featured = await getApprovedProductListItems({ section: 'decorations', limit: 4 });
+const featured = await getPublicCatalog(Astro).getProducts({ section: 'decorations', limit: 4 });
 ---
 
 <BaseLayout

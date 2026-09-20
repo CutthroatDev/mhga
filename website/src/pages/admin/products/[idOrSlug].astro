@@ -90,15 +90,15 @@ const isPublic = publicItem !== undefined;
     <Notice kind="info">
       {
         isPublic ? (
-          <span><strong>Would appear publicly:</strong> yes. It is approved and has an offer from an active retailer.</span>
+          <span><strong>Public now:</strong> yes. It is approved and has an eligible offer, so it is on the public site.</span>
         ) : product.reviewStatus !== 'approved' ? (
           <span>
-            <strong>Would appear publicly:</strong> no. This product is {product.reviewStatus}; only approved products can be public.
+            <strong>Public now:</strong> no. This product is {product.reviewStatus}; only approved products are public.
           </span>
         ) : (
           <span>
-            <strong>Would appear publicly:</strong> no. It is approved but has no offer from an active retailer
-            (or its category is not in a supported section).
+            <strong>Public now:</strong> no. It is approved but has no eligible offer (an offer from an active
+            retailer, with an http(s) link, that is not discontinued), or its category is not in a supported section.
           </span>
         )
       }

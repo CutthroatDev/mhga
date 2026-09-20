@@ -18,6 +18,19 @@ export type { PublicProductQuery } from './public-products';
 export { RetailerRepository } from './retailers';
 
 /**
+ * Public-only repositories, for the public site's data-access layer (src/data-access/).
+ * Deliberately excludes every admin/internal repository, so public code has no way to reach
+ * review notes, pending or rejected products, or any write operation.
+ */
+export function createPublicRepositories(d1: D1Database) {
+  const db = new Database(d1);
+  const categories = new CategoryRepository(db);
+  return { products: new PublicProductRepository(db, categories) };
+}
+
+export type PublicRepositories = ReturnType<typeof createPublicRepositories>;
+
+/**
  * Builds every repository from a D1 binding. Call once per request (they are cheap and
  * hold no state beyond the binding).
  *

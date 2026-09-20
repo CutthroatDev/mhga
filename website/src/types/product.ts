@@ -26,9 +26,16 @@ export interface ProductDetailItem {
   value: string;
 }
 
+/**
+ * The PUBLIC product model: exactly what the public site may know about a product.
+ *
+ * It deliberately has NO id, review status, review notes, timestamps, or retailer/offer
+ * ids. Those cannot be represented here, so they cannot leak into pages, components, or
+ * HTML. Public products are built only from the public read path (src/server/repositories/
+ * public-products.ts); internal representations live in src/server/domain/.
+ */
 export interface Product {
-  id: string;
-  /** URL segment: /<section>/products/<slug> */
+  /** Stable public identity. URL segment: /<section>/products/<slug> */
   slug: string;
   section: ProductSection;
   name: string;
@@ -38,10 +45,8 @@ export interface Product {
   imageUrl?: string;
   imageAlt?: string;
   price?: ProductPrice;
-  retailerId: string;
-  /** Link to the product on the retailer's site. */
+  /** Link to the product on the selected retailer's site (always http or https). */
   sourceUrl: string;
-  reviewStatus: ProductReviewStatus;
   /** Short optional labels shown on cards, e.g. "Editor's pick". Not a rating. */
   badges?: string[];
   /** Short notes on why this product made the cut. */

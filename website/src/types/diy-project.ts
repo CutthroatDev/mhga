@@ -15,8 +15,12 @@ export interface DIYProject {
   imageAlt?: string;
   materials: string[];
   steps: string[];
-  /** Ids of approved products that pair with this project. Unapproved ids are ignored. */
-  relatedProductIds?: string[];
+  /**
+   * Slugs of products that pair with this project, in display order. They are resolved
+   * through the public product read path, so hidden (pending/rejected/ineligible) products
+   * are silently skipped and can never appear.
+   */
+  relatedProductSlugs?: string[];
   /** Unpublished projects are never shown publicly. */
   published: boolean;
 }

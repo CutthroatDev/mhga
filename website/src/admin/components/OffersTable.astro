@@ -13,7 +13,7 @@ const { offers } = Astro.props;
 <div class="table-wrap offers">
   {
     offers.length === 0 ? (
-      <p class="empty-queue">No offers yet. A product needs an offer from an active retailer to be public.</p>
+      <p class="empty-queue">No offers yet. A product needs an eligible offer (active retailer, http(s) link, not discontinued) to be public.</p>
     ) : (
       <table class="queue">
         <thead>

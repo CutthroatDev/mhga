@@ -78,15 +78,12 @@ export function mapPublicProduct(row: PublicProductRow, categories: CategoryInde
 
   return {
     product: {
-      id: row.id,
       slug: row.slug,
       section: placement.section,
       name: row.name,
       summary: row.summary,
       categorySlugs: placement.categories.map((category) => category.slug),
-      retailerId: row.retailer_id,
       sourceUrl: row.offer_product_url,
-      reviewStatus: 'approved',
       ...optional('description', row.description),
       ...optional('imageUrl', row.image_url),
       ...optional('imageAlt', row.image_alt),
@@ -101,7 +98,6 @@ export function mapPublicProduct(row: PublicProductRow, categories: CategoryInde
       ...nonEmpty('details', details),
     },
     retailer: {
-      id: row.retailer_id,
       name: row.retailer_name,
       websiteUrl: row.retailer_website_url,
     },
@@ -140,7 +136,7 @@ export function mapOffer(row: OfferRow): ProductOffer {
 }
 
 /** Public DIY project. Callers pass only published rows. */
-export function mapPublicDIYProject(row: DIYProjectRow, relatedProductIds: string[]): DIYProject {
+export function mapPublicDIYProject(row: DIYProjectRow, relatedProductSlugs: string[]): DIYProject {
   return {
     id: row.id,
     slug: row.slug,
@@ -154,6 +150,6 @@ export function mapPublicDIYProject(row: DIYProjectRow, relatedProductIds: strin
     ...optional('estimatedTime', row.estimated_time),
     ...optional('imageUrl', row.image_url),
     ...optional('imageAlt', row.image_alt),
-    ...nonEmpty('relatedProductIds', relatedProductIds),
+    ...nonEmpty('relatedProductSlugs', relatedProductSlugs),
   };
 }

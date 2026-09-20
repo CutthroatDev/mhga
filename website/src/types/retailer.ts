@@ -1,6 +1,5 @@
-/** An outside retailer or vendor that sells products we feature. */
+/** The retailer selected for a public product. Public-safe fields only (no id, no status). */
 export interface Retailer {
-  id: string;
   name: string;
   websiteUrl: string;
 }

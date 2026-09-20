@@ -9,7 +9,7 @@ import { EDITABLE_FIELDS, FIELD_LABELS, type EditableField } from './validation'
 const NOTICES = {
   approved: 'approved.',
   approved_hidden:
-    'approved, but it has no offer from an active retailer, so it will not be listed publicly until one is added.',
+    'approved, but it has no eligible offer, so it will not be listed publicly until one is added (an offer from an active retailer, with an http(s) link, that is not discontinued).',
   rejected: 'rejected.',
   pending: 'moved back to pending.',
   notes_saved: 'internal notes saved.',

@@ -7,8 +7,8 @@ folder structure.
 - Prefer reusable components (`src/components/`) over one-off markup in pages.
 - Keep mobile/responsive behavior in mind for every UI change.
 - Do not introduce PHP.
-- Do not hard-code product data in UI components. Data lives in `src/data/` and is read
-  only through `src/data-access/`.
+- Do not hard-code product data in UI components or pages. Public products come from D1 through
+  `src/data-access/` (`getPublicCatalog`). `src/data/` holds only static DIY content.
 - Keep public product presentation separate from future ingestion/review logic.
   Public code shows approved products only; ingestion, review, and admin code goes in
   `src/server/` and `src/admin/` and must not be imported by public pages/components.
@@ -20,6 +20,26 @@ folder structure.
   content, no layout impact, mostly hidden on mobile, motion-safe animation only.
 - Avoid unnecessary dependencies; prefer the platform, Astro, and plain CSS.
 - Verify changes with `npm run build` (and `npm run check` for types).
+
+## Public catalog (D1)
+
+- **D1 is the source of truth for public products.** Never reintroduce static/sample product data
+  into the public site, and never silently fall back to it if D1 fails: let the request fail (500).
+- **Never show pending or rejected products publicly.** Visibility is defined once in
+  `src/server/repositories/public-product-query.ts` (approved + eligible offer from an active
+  retailer + supported category). Change eligibility there only, and update the tests.
+- **Public lookup by slug must enforce the same rules as list queries.** Use `getPublicCatalog()`
+  methods, which share one query. A hidden/unknown/wrong-section slug returns the plain 404
+  (`return new Response(null, { status: 404 })`), never a message explaining why.
+- **Internal review notes must never enter public models.** The public `Product` type has no id,
+  status, or notes; keep it that way. Never select `review_notes` in a public query.
+- **Do not bypass the boundaries.** Public pages import only from `src/data-access/`. The catalog
+  is built from `createPublicRepositories` (no admin repository). No SQL in pages/components.
+- **Keep routes static unless they genuinely need live catalog data.** Do not mark a page
+  `prerender = false` just because it is easier. Live catalog pages are on-demand; About, 404,
+  500 and the DIY list stay static. Live responses stay `Cache-Control: no-store`.
+- Related products of any static content (DIY) are referenced by slug and resolved through the
+  public catalog, never copied.
 
 ## Admin security (temporary rule)
 
@@ -52,7 +72,8 @@ folder structure.
   (or any `--remote` command) unless the user explicitly asks; never add a remote seed.
 - Do not put a made-up `database_id` in `wrangler.jsonc`. It must come from `wrangler d1 create`.
 - Database access lives in `src/server/` (repositories). UI components and pages contain no SQL
-  and never import from `src/server/` (only API routes/admin, which are server code, may).
+  and never import from `src/server/`. Only server code may: API routes, the admin, and the
+  `src/data-access/` bridge that public pages use.
 - Use prepared/bound statements (`Database.statement`/`all`/`first`/`run`). Never build SQL by
   concatenating values. Column names in dynamic updates must be literals in repository code.
 - Public reads expose approved/published data only. Internal review information

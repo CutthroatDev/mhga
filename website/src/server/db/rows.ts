@@ -33,11 +33,10 @@ export interface ProductRow {
 }
 
 /**
- * The columns a public read may see. Deliberately has NO review_notes, review_status,
+ * The columns a public read may see. Deliberately has NO ids, review_notes, review_status,
  * or timestamps: public queries never select them, so they cannot leak.
  */
 export interface PublicProductRow {
-  id: string;
   slug: string;
   name: string;
   summary: string;
@@ -48,8 +47,7 @@ export interface PublicProductRow {
   badges_json: string | null;
   image_url: string | null;
   image_alt: string | null;
-  // Chosen offer (primary, else cheapest) and its retailer
-  retailer_id: string;
+  // Selected offer (primary, else cheapest eligible) and its retailer. No ids on purpose.
   retailer_name: string;
   retailer_website_url: string;
   offer_product_url: string;

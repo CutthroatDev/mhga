@@ -21,7 +21,7 @@ export class DIYProjectRepository {
     const rows = await this.db.all<DIYProjectRow>(
       `SELECT ${COLUMNS} FROM diy_projects WHERE status = 'published' ORDER BY created_at DESC, id ASC`,
     );
-    const links = await this.getApprovedProductIdsByProject();
+    const links = await this.getApprovedProductSlugsByProject();
     const projects = rows.map((row) => mapPublicDIYProject(row, links.get(row.id) ?? []));
     return limit === undefined ? projects : projects.slice(0, limit);
   }
@@ -32,7 +32,7 @@ export class DIYProjectRepository {
       slug,
     );
     if (!row) return undefined;
-    const links = await this.getApprovedProductIdsByProject();
+    const links = await this.getApprovedProductSlugsByProject();
     return mapPublicDIYProject(row, links.get(row.id) ?? []);
   }
 
@@ -41,10 +41,10 @@ export class DIYProjectRepository {
     return this.products.getApprovedProductsForProject(projectId);
   }
 
-  /** project id -> approved product ids in order, for published projects. One query. */
-  private async getApprovedProductIdsByProject(): Promise<Map<string, string[]>> {
-    const rows = await this.db.all<{ project_id: string; product_id: string }>(
-      `SELECT l.project_id, l.product_id
+  /** project id -> approved product slugs in order, for published projects. One query. */
+  private async getApprovedProductSlugsByProject(): Promise<Map<string, string[]>> {
+    const rows = await this.db.all<{ project_id: string; product_slug: string }>(
+      `SELECT l.project_id, p.slug AS product_slug
        FROM diy_project_products l
        JOIN diy_projects d ON d.id = l.project_id AND d.status = 'published'
        JOIN products p ON p.id = l.product_id AND p.review_status = 'approved'
@@ -52,7 +52,7 @@ export class DIYProjectRepository {
     );
     const byProject = new Map<string, string[]>();
     for (const row of rows) {
-      byProject.set(row.project_id, [...(byProject.get(row.project_id) ?? []), row.product_id]);
+      byProject.set(row.project_id, [...(byProject.get(row.project_id) ?? []), row.product_slug]);
     }
     return byProject;
   }

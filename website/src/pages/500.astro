@@ -1,0 +1,19 @@
+---
+// Shown when a server-rendered page fails (for example the product database is
+// unavailable). Deliberately generic: it never reveals what went wrong. The real error is
+// logged on the server.
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import PageHeader from '@/components/layout/PageHeader.astro';
+import Section from '@/components/layout/Section.astro';
+import Button from '@/components/ui/Button.astro';
+---
+
+<BaseLayout title="Something went wrong">
+  <PageHeader
+    title="Something went wrong"
+    description="We couldn't load this page. Please try again in a moment."
+  />
+  <Section>
+    <Button href="/">Back to home</Button>
+  </Section>
+</BaseLayout>

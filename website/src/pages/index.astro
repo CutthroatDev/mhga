@@ -1,4 +1,7 @@
 ---
+// On-demand: shows live products from D1, so an approval/removal is visible immediately.
+export const prerender = false;
+
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import Hero from '@/components/home/Hero.astro';
 import Philosophy from '@/components/home/Philosophy.astro';
@@ -7,23 +10,17 @@ import SectionHeading from '@/components/layout/SectionHeading.astro';
 import Button from '@/components/ui/Button.astro';
 import DIYProjectGrid from '@/components/diy/DIYProjectGrid.astro';
 import ProductShelf from '@/components/products/ProductShelf.astro';
-import { getApprovedProductListItems, getPublishedDIYProjects } from '@/data-access';
+import { getPublicCatalog, getPublishedDIYProjects } from '@/data-access';
 
 const FEATURED_COUNT = 4;
 
+// Featured = the first eligible products in the catalog's deterministic order (newest first).
+const catalog = getPublicCatalog(Astro);
 const [outdoor, indoor, costumes, projects] = await Promise.all([
-  getApprovedProductListItems({
-    section: 'decorations',
-    categorySlug: 'outdoor',
-    limit: FEATURED_COUNT,
-  }),
-  getApprovedProductListItems({
-    section: 'decorations',
-    categorySlug: 'indoor',
-    limit: FEATURED_COUNT,
-  }),
-  getApprovedProductListItems({ section: 'costumes', limit: FEATURED_COUNT }),
-  getPublishedDIYProjects(3),
+  catalog.getProducts({ section: 'decorations', categorySlug: 'outdoor', limit: FEATURED_COUNT }),
+  catalog.getProducts({ section: 'decorations', categorySlug: 'indoor', limit: FEATURED_COUNT }),
+  catalog.getProducts({ section: 'costumes', limit: FEATURED_COUNT }),
+  getPublishedDIYProjects(3), // DIY content is still static
 ]);
 ---
 

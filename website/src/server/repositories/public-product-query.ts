@@ -1,20 +1,30 @@
 /**
- * The one place that defines what a PUBLIC product read selects.
+ * THE single definition of what makes a product publicly visible, and what a public read
+ * selects. Every public product read (lists, by-slug, related, DIY) goes through
+ * `publicProductQuery()`, so list pages and direct slug access can never disagree.
  *
- * Guarantees, by construction:
- *  - only review_status = 'approved' products
- *  - review_notes (and status/timestamps) are never selected
- *  - only products that have a usable offer from an ACTIVE retailer (the public `Product`
- *    needs a purchase link). The offer used is the primary one, else the cheapest.
+ * A product is public only when ALL of these hold:
+ *
+ *  1. review_status = 'approved'.
+ *  2. It has an ELIGIBLE OFFER: the offer's retailer is active, the offer is not
+ *     'discontinued', and its product_url is an http(s) URL (a public buy link must never
+ *     be something like a javascript: URL). Among eligible offers the PRIMARY one is used;
+ *     if there is no eligible primary, the cheapest eligible offer (unknown price last).
+ *     A product with no eligible offer is not public.
+ *  3. Its category resolves to a supported public section (decorations | costumes). That
+ *     check needs the category tree, so it lives in TypeScript: `CategoryIndex.resolve()`
+ *     via `mapPublicProduct()`, which drops the product otherwise.
+ *
+ * What it selects: only public columns. review_notes, review_status, timestamps, and every
+ * database id are never selected, so they cannot reach a public object.
  *
  * Callers add constant SQL fragments (`prefix`, `where`, `orderBy`) and bind any values.
  * Never build these fragments from user input.
  */
 const SELECT_PUBLIC_PRODUCTS = `
 SELECT
-  p.id, p.slug, p.name, p.summary, p.description, p.category_id,
+  p.slug, p.name, p.summary, p.description, p.category_id,
   p.quality_notes_json, p.details_json, p.badges_json, p.image_url, p.image_alt,
-  o.retailer_id            AS retailer_id,
   r.name                   AS retailer_name,
   r.website_url            AS retailer_website_url,
   o.product_url            AS offer_product_url,
@@ -26,12 +36,15 @@ JOIN product_offers o ON o.id = (
   FROM product_offers o2
   JOIN retailers r2 ON r2.id = o2.retailer_id AND r2.is_active = 1
   WHERE o2.product_id = p.id
+    AND o2.availability <> 'discontinued'
+    AND (o2.product_url LIKE 'https://%' OR o2.product_url LIKE 'http://%')
   ORDER BY o2.is_primary DESC, o2.price_cents IS NULL, o2.price_cents ASC, o2.id ASC
   LIMIT 1
 )
 JOIN retailers r ON r.id = o.retailer_id
 WHERE p.review_status = 'approved'`;
 
+// Newest first, with the id as a tie-breaker so the order is always deterministic.
 const DEFAULT_ORDER = 'p.created_at DESC, p.id ASC';
 
 export interface PublicProductQueryParts {

@@ -1,5 +1,7 @@
 ---
-import type { GetStaticPaths } from 'astro';
+// On-demand only because its related products are live from D1 (project content is static).
+export const prerender = false;
+
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import Section from '@/components/layout/Section.astro';
 import Breadcrumbs from '@/components/ui/Breadcrumbs.astro';
@@ -8,19 +10,17 @@ import DIYProjectGrid from '@/components/diy/DIYProjectGrid.astro';
 import SectionHeading from '@/components/layout/SectionHeading.astro';
 import ProductShelf from '@/components/products/ProductShelf.astro';
 import {
-  getApprovedProductListItemsByIds,
-  getPublishedDIYProjects,
+  getPublicCatalog,
+  getPublishedDIYProjectBySlug,
   getRelatedDIYProjects,
 } from '@/data-access';
 
-export const getStaticPaths = (async () => {
-  const projects = await getPublishedDIYProjects();
-  return projects.map((project) => ({ params: { slug: project.slug }, props: { project } }));
-}) satisfies GetStaticPaths;
+const project = Astro.params.slug ? await getPublishedDIYProjectBySlug(Astro.params.slug) : undefined;
+if (!project) return new Response(null, { status: 404 });
 
-const { project } = Astro.props;
+// Hidden products (pending, rejected, ineligible) are skipped by the public catalog.
 const [relatedProducts, relatedProjects] = await Promise.all([
-  getApprovedProductListItemsByIds(project.relatedProductIds ?? []),
+  getPublicCatalog(Astro).getProductsBySlugs(project.relatedProductSlugs ?? []),
   getRelatedDIYProjects(project),
 ]);
 ---

@@ -1,19 +1,22 @@
 ---
-import type { GetStaticPaths } from 'astro';
+// On-demand: shows live products from D1, so an approval/removal is visible immediately.
+export const prerender = false;
+
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import Section from '@/components/layout/Section.astro';
 import Breadcrumbs from '@/components/ui/Breadcrumbs.astro';
 import ProductDetail from '@/components/products/ProductDetail.astro';
 import ProductShelf from '@/components/products/ProductShelf.astro';
-import { getApprovedProductListItems, getRelatedProducts } from '@/data-access';
+import { getPublicCatalog } from '@/data-access';
 
-export const getStaticPaths = (async () => {
-  const items = await getApprovedProductListItems({ section: 'decorations' });
-  return items.map((item) => ({ params: { slug: item.product.slug }, props: { item } }));
-}) satisfies GetStaticPaths;
+const catalog = getPublicCatalog(Astro);
+const item = Astro.params.slug ? await catalog.getProductBySlug('decorations', Astro.params.slug) : undefined;
 
-const { item } = Astro.props;
-const related = await getRelatedProducts(item.product);
+// A pending, rejected, ineligible, wrong-section, or unknown slug all look the same: the
+// site's normal 404 (no body, so Astro renders src/pages/404.astro). Never say why.
+if (!item) return new Response(null, { status: 404 });
+
+const related = await catalog.getRelatedProducts(item);
 ---
 
 <BaseLayout title={item.product.name} description={item.product.summary}>

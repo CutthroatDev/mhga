@@ -1,9 +1,9 @@
 # Halloween Site
 
 A website of curated Halloween products (decorations and costumes) from outside
-retailers, plus DIY project guides. The public site is complete enough to browse; it
-still reads static sample data. A Cloudflare D1 database layer has been added
-underneath it (not yet used by the public pages).
+retailers, plus DIY project guides. **Public product data comes from Cloudflare D1**: a product
+appears on the public site only after it is approved in the (local) admin and has an eligible
+offer. DIY project content is still static (see *Public catalog*).
 
 ## Technology stack
 
@@ -49,20 +49,24 @@ Then either:
 
 ## Routes
 
-| Route                              | Purpose                     |
-| ---------------------------------- | --------------------------- |
-| `/`                                | Home                        |
-| `/decorations`                     | Decorations overview        |
-| `/decorations/outdoor`             | Outdoor decorations         |
-| `/decorations/indoor`              | Indoor decorations          |
-| `/decorations/products`            | All decoration products     |
-| `/decorations/products/<slug>`     | Decoration product detail   |
-| `/costumes`                        | Costumes overview           |
-| `/costumes/products`               | All costume products        |
-| `/costumes/products/<slug>`        | Costume product detail      |
-| `/diy-projects`                    | DIY projects list           |
-| `/diy-projects/<slug>`             | DIY project detail          |
-| `/about`                           | About                       |
+**Static** pages are prerendered at build time. **On-demand** pages run in the Worker and read
+live data from D1 on every request (see *Public catalog*).
+
+| Route                              | Purpose                     | Rendering                                   |
+| ---------------------------------- | --------------------------- | ------------------------------------------- |
+| `/`                                | Home (live product shelves) | on-demand                                   |
+| `/decorations`                     | Decorations overview        | on-demand (live featured shelf)             |
+| `/decorations/outdoor`             | Outdoor decorations         | on-demand                                   |
+| `/decorations/indoor`              | Indoor decorations          | on-demand                                   |
+| `/decorations/products`            | All decoration products     | on-demand                                   |
+| `/decorations/products/<slug>`     | Decoration product detail   | on-demand                                   |
+| `/costumes`                        | Costumes overview           | on-demand (live featured shelf)             |
+| `/costumes/products`               | All costume products        | on-demand                                   |
+| `/costumes/products/<slug>`        | Costume product detail      | on-demand                                   |
+| `/diy-projects`                    | DIY projects list           | static (static content, no products)        |
+| `/diy-projects/<slug>`             | DIY project detail          | on-demand (live related products)           |
+| `/about`, `/404`, `/500`           | About and error pages       | static                                      |
+| `/api/health`                      | Health check                | on-demand                                   |
 
 A local-only review admin lives under `/admin` (see *Admin* below). It is never linked from the
 public site and is disabled in production builds.
@@ -96,6 +100,44 @@ Each component renders a Cute and a Scary variant, and CSS shows the active one
   user has not requested reduced motion.
 - Real artwork goes in `src/assets/decorations/{shared,cute,scary}/` (see its README).
 
+## Public catalog
+
+Public product pages read **live from Cloudflare D1**. `npm run dev` uses the local D1
+simulation (never the remote database), so approving a product in the local admin shows it on
+the public pages on the next refresh, with no rebuild or restart.
+
+```
+public Astro page -> getPublicCatalog() (src/data-access) -> public repositories -> D1
+                  -> public domain model (src/types) -> UI component
+```
+
+**Who is public.** A product is publicly visible only when *all* of these hold (defined once,
+in `src/server/repositories/public-product-query.ts`; lists, direct slug access, related
+products and DIY all use it):
+
+1. `review_status = approved`.
+2. It has an **eligible offer**: the offer's retailer is active, the offer is not
+   `discontinued`, and its URL is `http(s)`. The **primary** eligible offer is used; if there is
+   none, the **cheapest** eligible offer (unknown price last). No eligible offer, not public.
+3. Its category resolves to a supported section (decorations or costumes).
+
+**Hidden products are invisible.** A pending, rejected, ineligible, wrong-section or unknown
+slug all return the site's ordinary 404 page, byte-for-byte identical, so nothing reveals
+that a hidden product exists. Internal review notes and status are not selected by public
+queries and have no place in the public model (`Product` has no id, status, or notes).
+
+**Failures are loud, never silent.** If D1 is missing or a query fails, the page returns a
+generic 500 (`src/pages/500.astro`); the real error is logged on the server only. There is no
+fallback to sample products.
+
+**Static vs. dynamic.** Only routes that show live catalog data are on-demand (table above).
+Pages without it stay prerendered. Responses from live pages are `Cache-Control: no-store`.
+
+**What is still static.** DIY project *content* lives in `src/data/diy-projects.ts` (a D1 schema
+for DIY exists and is seeded, but the site does not read it yet). A DIY page's related products
+are referenced by slug and looked up live through the same public catalog, so a hidden product
+cannot leak through a DIY page.
+
 ## Backend / Database
 
 The site curates **products**. **Retailers** provide **offers** (listings, prices, links)
@@ -109,9 +151,8 @@ repository classes. No ORM, no other database.
   app-generated UUID text; URLs use slugs; money is integer cents; timestamps are ISO 8601 UTC.
 - **Migrations are the authoritative schema history.** They are committed. Never edit a
   migration that has been applied anywhere; add a new numbered file.
-- **Not used by the public site yet.** Public pages still read `src/data/` through
-  `src/data-access/`. The database layer sits beside it so the switch can be made later
-  without changing pages.
+- **The public site reads product data from D1** through `src/data-access/` (see *Public
+  catalog*). There is no static product data and no fallback to sample products.
 - **Write endpoints exist only for the local-only admin** (`/api/admin/*`, see *Admin*), and every
   one refuses to run outside a local dev server. There is no public write endpoint. The only
   public route is `GET /api/health` ("ok"/"error" for the Worker and a trivial DB query, nothing else).
@@ -229,9 +270,9 @@ other hostname is refused, so `astro dev --host` does not expose it. Re-run
 | `POST /api/admin/products/<id>/review`                 | Change status and/or save internal notes    |
 | `POST /api/admin/products/<id>/update`                 | Save edited product information             |
 
-The public site still reads static sample data, not the database, so approving a product
-records the decision but has no visible public effect until the site is switched to the
-database. Offers are shown read-only. Affiliate links are not implemented.
+Approving a product makes it appear on the public site **immediately** (no build or restart),
+provided it has an eligible offer; returning it to pending or rejecting it removes it
+immediately. Offers are shown read-only. Affiliate links are not implemented.
 
 ### How the temporary production lockout works
 
@@ -278,8 +319,8 @@ src/
     categories/         CategoryPage (template for product listing pages)
     diy/                DIY project card, grid, and detail
   config/               Site name and navigation
-  data/                 Placeholder sample data (replaced by a real source later)
-  data-access/          The only layer pages use to read products/projects
+  data/                 STATIC DIY project content only (products are in D1, not here)
+  data-access/          The public boundary: getPublicCatalog() (D1) + static DIY reads
   layouts/              BaseLayout (document shell)
   pages/                Routes (file-based)
   server/               Database layer and repositories (see Backend / Database)
@@ -290,9 +331,10 @@ src/
 
 ## Key conventions
 
-- Pages and components never import from `src/data/` directly; they use `src/data-access/`.
-- Pages and components never import from `src/server/`.
-- Public reads return **approved/published** data only.
+- Pages and components read data only through `src/data-access/`; they never import from
+  `src/data/` or `src/server/`.
+- D1 is the source of truth for public products. Public reads return only publicly eligible
+  products (below), never pending or rejected ones.
 - Product review status is `pending`, `approved`, or `rejected`.
 
 See `AGENTS.md` for guidance for coding agents.

@@ -1,9 +1,12 @@
 ---
+// On-demand: shows live products from D1, so an approval/removal is visible immediately.
+export const prerender = false;
+
 import CategoryPage from '@/components/categories/CategoryPage.astro';
 import { getNavChildren } from '@/config/site';
-import { getApprovedProductListItems } from '@/data-access';
+import { getPublicCatalog } from '@/data-access';
 
-const items = await getApprovedProductListItems({ section: 'costumes' });
+const items = await getPublicCatalog(Astro).getProducts({ section: 'costumes' });
 ---
 
 <CategoryPage

@@ -19,14 +19,15 @@ server (see `src/admin/README.md`).
 
 ## Rules
 
-- **Public vs internal.** `PublicProductRepository` and `DIYProjectRepository` return
-  approved/published data as the public types in `src/types/`. `AdminProductRepository`,
+- **Public vs internal.** `PublicProductRepository` (the public site's data source) and
+  `DIYProjectRepository` (not used by the site yet) return public types from `src/types/`. `AdminProductRepository`,
   `RetailerRepository`, and `OfferRepository` are internal: they can see everything,
   including review notes, and must never feed a public page.
 - **Public queries never select internal columns.** All public product SQL is built from
   `public-product-query.ts`. Add columns there deliberately.
-- **No SQL outside this directory.** Pages/components call `src/data-access/` (today static
-  data). Switching that layer to these repositories is a later, separate step.
+- **No SQL outside this directory.** Public pages call `src/data-access/` (`getPublicCatalog`),
+  which is built from `createPublicRepositories` (public repositories only) and reads D1 live.
+  Public product visibility is defined in one place: `repositories/public-product-query.ts`.
 - **Bound values only.** Use `Database.statement/all/first/run`. Never concatenate values into SQL.
 - **No public write endpoints.** The only write endpoints are the local-only admin ones, which
   are guarded by `src/server/admin/access.ts` and disabled in production builds.
