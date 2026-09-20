@@ -1,0 +1,70 @@
+---
+// LOCAL-ONLY admin dashboard. Never prerender (see astro.config.mjs safety net).
+export const prerender = false;
+
+import AdminLayout from '@/admin/layouts/AdminLayout.astro';
+import Notice from '@/admin/components/Notice.astro';
+import ProductQueueTable from '@/admin/components/ProductQueueTable.astro';
+import { localAdminDenied } from '@/server/admin/access';
+import { getRepositories } from '@/server/admin/context';
+
+const denied = localAdminDenied(Astro.request);
+if (denied) return denied;
+
+const repos = getRepositories(Astro.locals);
+if (!repos) return new Response('Database unavailable', { status: 503 });
+Astro.response.headers.set('Cache-Control', 'no-store');
+
+const [counts, pending] = await Promise.all([
+  repos.adminReview.getStatusCounts(),
+  repos.adminReview.listSummaries('pending'),
+]);
+const next = pending.slice(0, 5);
+
+const cards = [
+  { key: 'pending', label: 'Pending', hint: 'Awaiting review', href: '/admin/products/pending', count: counts.pending },
+  { key: 'approved', label: 'Approved', hint: 'Reviewed and accepted', href: '/admin/products/approved', count: counts.approved },
+  { key: 'rejected', label: 'Rejected', hint: 'Reviewed and declined', href: '/admin/products/rejected', count: counts.rejected },
+] as const;
+---
+
+<AdminLayout title="Dashboard" active="dashboard">
+  <div class="admin-pagehead">
+    <div>
+      <h1>Product review</h1>
+      <p class="admin-lede">Review products before they can appear on the public site.</p>
+    </div>
+    <a class="admin-btn admin-btn--primary" href="/admin/products/pending">Open pending queue</a>
+  </div>
+
+  <ul class="stats" role="list">
+    {
+      cards.map((card) => (
+        <li>
+          <a class={`stat stat--${card.key}`} href={card.href}>
+            <span class="stat__count">{card.count}</span>
+            <span class="stat__label">{card.label} products</span>
+            <span class="stat__hint">{card.hint}</span>
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+
+  <h2>Next up</h2>
+  <p class="admin-lede">The oldest products waiting for review.</p>
+  <div style="margin-top: var(--space-3)">
+    <ProductQueueTable
+      rows={next}
+      backPath="/admin/products/pending"
+      emptyText="Nothing is waiting for review."
+    />
+  </div>
+
+  <div style="margin-top: var(--space-5)">
+    <Notice kind="info">
+      The public site still reads static sample data, not this database. Approving a product
+      records the decision; it appears publicly once the site is switched to the database.
+    </Notice>
+  </div>
+</AdminLayout>

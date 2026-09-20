@@ -1,0 +1,238 @@
+---
+// LOCAL-ONLY product review page. Never prerender.
+export const prerender = false;
+
+import AdminLayout from '@/admin/layouts/AdminLayout.astro';
+import Notice from '@/admin/components/Notice.astro';
+import OffersTable from '@/admin/components/OffersTable.astro';
+import ProductEditForm from '@/admin/components/ProductEditForm.astro';
+import ReviewForm from '@/admin/components/ReviewForm.astro';
+import StatusBadge from '@/admin/components/StatusBadge.astro';
+import { formatCents, formatDateTime } from '@/admin/format';
+import { localAdminDenied } from '@/server/admin/access';
+import { getRepositories } from '@/server/admin/context';
+import { safeReturnPath } from '@/server/admin/http';
+import { errorFieldLabels, isNoticeCode, noticeText } from '@/server/admin/messages';
+import { EDITABLE_FIELDS, parseProductIdOrSlug, type EditableField } from '@/server/admin/validation';
+
+const denied = localAdminDenied(Astro.request);
+if (denied) return denied;
+
+const repos = getRepositories(Astro.locals);
+if (!repos) return new Response('Database unavailable', { status: 503 });
+Astro.response.headers.set('Cache-Control', 'no-store');
+
+const notFound = () => new Response('Not found', { status: 404, headers: { 'Cache-Control': 'no-store' } });
+
+const idOrSlug = parseProductIdOrSlug(Astro.params.idOrSlug);
+if (!idOrSlug) return notFound();
+
+const detail = await repos.adminReview.getReviewDetail(idOrSlug);
+if (!detail) return notFound();
+
+const { product, categoryLabel, offers, publicItem } = detail;
+const categories = await repos.adminReview.getCategoryOptions();
+
+// Where "back to queue" and post-action redirects go. Whitelisted; defaults to the product's status queue.
+const backPath = safeReturnPath(Astro.url.searchParams.get('back'), `/admin/products/${product.reviewStatus}`);
+const backLabels: Record<string, string> = {
+  '/admin/products': 'All products',
+  '/admin/products/pending': 'Pending queue',
+  '/admin/products/approved': 'Approved products',
+  '/admin/products/rejected': 'Rejected products',
+};
+const backLabel = backLabels[backPath] ?? 'Queue';
+
+// Confirmation / error messages come from fixed codes only (never arbitrary URL text).
+const code = Astro.url.searchParams.get('notice');
+const notice = isNoticeCode(code) ? noticeText(code, product.name) : undefined;
+const hasError = Astro.url.searchParams.get('error') === 'invalid';
+const fieldsParam = hasError ? Astro.url.searchParams.get('fields') : null;
+const errorLabels = errorFieldLabels(fieldsParam);
+const rawFields = (fieldsParam ?? '').split(',');
+const invalidFields = EDITABLE_FIELDS.filter((field): field is EditableField => rawFields.includes(field));
+const invalidNotes = rawFields.includes('reviewNotes');
+
+const preferred = offers[0];
+const isPublic = publicItem !== undefined;
+---
+
+<AdminLayout title={product.name} active={product.reviewStatus}>
+  <nav class="admin-crumbs" aria-label="Breadcrumb">
+    <a href="/admin">Admin</a> / <a href={backPath}>{backLabel}</a> / <span aria-current="page">{product.name}</span>
+  </nav>
+
+  <div class="admin-pagehead">
+    <div>
+      <h1>{product.name}</h1>
+      <p class="admin-lede">{product.slug}</p>
+    </div>
+    <div class="actions">
+      <StatusBadge status={product.reviewStatus} />
+      <a class="admin-btn admin-btn--small" href="#review">Jump to review actions</a>
+      <a class="admin-btn admin-btn--small" href={backPath}>Back to {backLabel}</a>
+    </div>
+  </div>
+
+  {notice && <Notice kind="success">{notice}</Notice>}
+  {
+    hasError && (
+      <Notice kind="error">
+        <span>
+          Nothing was saved.
+          {errorLabels.length > 0 && <> Please check: <strong>{errorLabels.join(', ')}</strong>.</>}
+        </span>
+      </Notice>
+    )
+  }
+
+  <div class="visibility">
+    <Notice kind="info">
+      {
+        isPublic ? (
+          <span><strong>Would appear publicly:</strong> yes. It is approved and has an offer from an active retailer.</span>
+        ) : product.reviewStatus !== 'approved' ? (
+          <span>
+            <strong>Would appear publicly:</strong> no. This product is {product.reviewStatus}; only approved products can be public.
+          </span>
+        ) : (
+          <span>
+            <strong>Would appear publicly:</strong> no. It is approved but has no offer from an active retailer
+            (or its category is not in a supported section).
+          </span>
+        )
+      }
+    </Notice>
+  </div>
+
+  <div class="review-grid">
+    <div class="review-main">
+      <section class="panel panel--public" aria-labelledby="public-heading">
+        <h2 id="public-heading" class="panel__label">Public information</h2>
+        <p class="panel__intro">What visitors would see once this product is approved and listed.</p>
+
+        <div class="public-media">
+          {
+            product.imageUrl ? (
+              <img src={product.imageUrl} alt={product.imageAlt ?? product.name} />
+            ) : (
+              <div class="image-placeholder" aria-hidden="true">
+                <svg viewBox="0 0 48 48" width="40" height="40" focusable="false">
+                  <rect x="6" y="9" width="36" height="30" rx="4" />
+                  <circle cx="17" cy="20" r="3.5" />
+                  <path d="M8 35l10-9 7 6 6-5 9 8" />
+                </svg>
+              </div>
+            )
+          }
+        </div>
+
+        <dl class="fieldlist">
+          <div><dt>Name</dt><dd>{product.name}</dd></div>
+          <div><dt>Category</dt><dd>{categoryLabel}</dd></div>
+          <div><dt>Summary</dt><dd>{product.summary}</dd></div>
+          <div>
+            <dt>Description</dt>
+            <dd>{product.description ?? <span class="muted">None</span>}</dd>
+          </div>
+          <div>
+            <dt>Quality notes</dt>
+            <dd>
+              {
+                product.qualityNotes.length > 0 ? (
+                  <ul>{product.qualityNotes.map((note) => <li>{note}</li>)}</ul>
+                ) : (
+                  <span class="muted">None</span>
+                )
+              }
+            </dd>
+          </div>
+          <div>
+            <dt>Badges</dt>
+            <dd>
+              {
+                product.badges.length > 0 ? (
+                  <ul class="pills">{product.badges.map((badge) => <li class="pill">{badge}</li>)}</ul>
+                ) : (
+                  <span class="muted">None</span>
+                )
+              }
+            </dd>
+          </div>
+          <div>
+            <dt>Details</dt>
+            <dd>
+              {
+                product.details.length > 0 ? (
+                  <ul>
+                    {product.details.map((detail) => (
+                      <li><strong>{detail.label}:</strong> {detail.value}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <span class="muted">None</span>
+                )
+              }
+            </dd>
+          </div>
+          <div>
+            <dt>Where to buy (preferred offer)</dt>
+            <dd>
+              {
+                preferred ? (
+                  <>
+                    {preferred.retailerName} · {formatCents(preferred.priceCents, preferred.currency)}
+                    <br />
+                    <a href={preferred.productUrl} target="_blank" rel="noopener noreferrer">
+                      {preferred.productUrl}<span class="visually-hidden"> (opens in a new tab)</span>
+                    </a>
+                  </>
+                ) : (
+                  <span class="muted">No offer yet</span>
+                )
+              }
+            </dd>
+          </div>
+        </dl>
+      </section>
+    </div>
+
+    <aside class="review-side" id="review" aria-labelledby="internal-heading">
+      <section class="panel panel--internal">
+        <h2 id="internal-heading" class="panel__label">Internal review information</h2>
+        <p class="panel__intro">Never shown publicly.</p>
+
+        <dl class="fieldlist" style="margin-bottom: var(--space-4)">
+          <div><dt>Current status</dt><dd><StatusBadge status={product.reviewStatus} /></dd></div>
+          <div><dt>Created</dt><dd><time datetime={product.createdAt}>{formatDateTime(product.createdAt)}</time></dd></div>
+          <div><dt>Last updated</dt><dd><time datetime={product.updatedAt}>{formatDateTime(product.updatedAt)}</time></dd></div>
+          <div>
+            <dt>Last reviewed</dt>
+            <dd>{product.reviewedAt ? <time datetime={product.reviewedAt}>{formatDateTime(product.reviewedAt)}</time> : <span class="muted">Not reviewed yet</span>}</dd>
+          </div>
+        </dl>
+
+        <ReviewForm
+          productId={product.id}
+          status={product.reviewStatus}
+          notes={product.reviewNotes ?? ''}
+          backPath={backPath}
+          invalidNotes={invalidNotes}
+        />
+      </section>
+    </aside>
+  </div>
+
+  <section class="panel" style="margin-top: var(--space-4)" aria-labelledby="offers-heading">
+    <h2 id="offers-heading">Retailer offers</h2>
+    <p class="panel__intro" style="margin-top: var(--space-1)">
+      The preferred (primary) offer supplies the public retailer, price and buy link. Read-only for now.
+    </p>
+    <OffersTable offers={offers} />
+  </section>
+
+  <details class="edit" open={invalidFields.length > 0}>
+    <summary>Edit product information</summary>
+    <ProductEditForm product={product} categories={categories} backPath={backPath} invalid={invalidFields} />
+  </details>
+</AdminLayout>

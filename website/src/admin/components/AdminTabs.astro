@@ -1,0 +1,32 @@
+---
+import type { ProductStatusCounts } from '@/server/domain/admin';
+
+interface Props {
+  counts: ProductStatusCounts;
+  active: 'pending' | 'approved' | 'rejected' | 'all';
+}
+
+const { counts, active } = Astro.props;
+
+const tabs = [
+  { key: 'pending', label: 'Pending', href: '/admin/products/pending', count: counts.pending },
+  { key: 'approved', label: 'Approved', href: '/admin/products/approved', count: counts.approved },
+  { key: 'rejected', label: 'Rejected', href: '/admin/products/rejected', count: counts.rejected },
+  { key: 'all', label: 'All', href: '/admin/products', count: counts.total },
+] as const;
+---
+
+<nav aria-label="Product status">
+  <ul class="tabs">
+    {
+      tabs.map((tab) => (
+        <li>
+          <a href={tab.href} aria-current={active === tab.key ? 'page' : undefined}>
+            {tab.label}
+            <span class="count">{tab.count}</span>
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+</nav>

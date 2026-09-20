@@ -1,0 +1,113 @@
+---
+// Basic product editing: name, summary, description, category, quality notes, badges, details.
+// The browser attributes here are only a convenience; the server re-validates everything.
+import type { AdminProduct } from '@/server/domain/catalog';
+import type { CategoryOption } from '@/server/domain/admin';
+import { LIMITS, type EditableField } from '@/server/admin/validation';
+
+interface Props {
+  product: AdminProduct;
+  categories: CategoryOption[];
+  backPath: string;
+  /** Fields the server rejected on the last attempt. */
+  invalid?: EditableField[];
+}
+
+const { product, categories, backPath, invalid = [] } = Astro.props;
+const bad = new Set<string>(invalid);
+const lines = (values: string[]) => values.join('\n');
+const detailLines = product.details.map((detail) => `${detail.label}: ${detail.value}`).join('\n');
+---
+
+<form class="form" method="post" action={`/api/admin/products/${product.id}/update`}>
+  <input type="hidden" name="return_to" value={backPath} />
+
+  <div class="field">
+    <label for="f-name">Name</label>
+    <input
+      id="f-name"
+      name="name"
+      type="text"
+      required
+      maxlength={LIMITS.name}
+      value={product.name}
+      aria-invalid={bad.has('name') ? 'true' : undefined}
+    />
+  </div>
+
+  <div class="field">
+    <label for="f-summary">Summary</label>
+    <textarea
+      id="f-summary"
+      name="summary"
+      required
+      maxlength={LIMITS.summary}
+      rows="3"
+      aria-invalid={bad.has('summary') ? 'true' : undefined}>{product.summary}</textarea>
+    <p class="hint">One short paragraph shown on product cards.</p>
+  </div>
+
+  <div class="field">
+    <label for="f-description">Description</label>
+    <textarea
+      id="f-description"
+      name="description"
+      maxlength={LIMITS.description}
+      rows="6"
+      aria-invalid={bad.has('description') ? 'true' : undefined}>{product.description ?? ''}</textarea>
+  </div>
+
+  <div class="field">
+    <label for="f-category">Category</label>
+    <select id="f-category" name="categoryId" required aria-invalid={bad.has('categoryId') ? 'true' : undefined}>
+      {
+        categories.map((category) => (
+          <option value={category.id} selected={category.id === product.categoryId}>
+            {category.label}
+          </option>
+        ))
+      }
+    </select>
+  </div>
+
+  <div class="field">
+    <label for="f-quality">Quality notes</label>
+    <textarea
+      id="f-quality"
+      name="qualityNotes"
+      rows="4"
+      aria-describedby="f-quality-hint"
+      aria-invalid={bad.has('qualityNotes') ? 'true' : undefined}>{lines(product.qualityNotes)}</textarea>
+    <p id="f-quality-hint" class="hint">
+      One note per line (up to {LIMITS.qualityNotes}, {LIMITS.qualityNote} characters each). Shown publicly.
+    </p>
+  </div>
+
+  <div class="field">
+    <label for="f-badges">Badges</label>
+    <textarea
+      id="f-badges"
+      name="badges"
+      rows="2"
+      aria-describedby="f-badges-hint"
+      aria-invalid={bad.has('badges') ? 'true' : undefined}>{lines(product.badges)}</textarea>
+    <p id="f-badges-hint" class="hint">
+      One per line (up to {LIMITS.badges}, {LIMITS.badge} characters each). Short labels, not ratings.
+    </p>
+  </div>
+
+  <div class="field">
+    <label for="f-details">Details</label>
+    <textarea
+      id="f-details"
+      name="details"
+      rows="3"
+      aria-describedby="f-details-hint"
+      aria-invalid={bad.has('details') ? 'true' : undefined}>{detailLines}</textarea>
+    <p id="f-details-hint" class="hint">One per line as <code>Label: Value</code>, for example <code>Height: 6 ft</code>.</p>
+  </div>
+
+  <div class="actions">
+    <button class="admin-btn admin-btn--primary" type="submit">Save product information</button>
+  </div>
+</form>

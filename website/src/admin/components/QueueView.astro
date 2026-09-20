@@ -1,0 +1,72 @@
+---
+// Presentation for a product queue page (Pending / Approved / Rejected / All).
+// The page does the guard and data loading; this component only renders.
+import type { AdminProductSummary, ProductStatusCounts } from '@/server/domain/admin';
+import type { ProductReviewStatus } from '@/types';
+import AdminLayout from '@/admin/layouts/AdminLayout.astro';
+import AdminTabs from './AdminTabs.astro';
+import Notice from './Notice.astro';
+import ProductQueueTable from './ProductQueueTable.astro';
+
+interface Props {
+  status?: ProductReviewStatus;
+  counts: ProductStatusCounts;
+  rows: AdminProductSummary[];
+  notice?: { text: string; productId?: string };
+}
+
+const { status, counts, rows, notice } = Astro.props;
+
+const copy = {
+  pending: {
+    title: 'Pending review',
+    lede: 'Oldest first. Open a product, add notes, then approve or reject it.',
+    empty: 'Nothing is waiting for review.',
+  },
+  approved: {
+    title: 'Approved products',
+    lede: 'Most recently reviewed first.',
+    empty: 'No approved products yet.',
+  },
+  rejected: {
+    title: 'Rejected products',
+    lede: 'Most recently reviewed first. Open one to change its status if needed.',
+    empty: 'No rejected products.',
+  },
+  all: {
+    title: 'All products',
+    lede: 'Pending first, then everything else.',
+    empty: 'No products yet.',
+  },
+} as const;
+
+const key = status ?? 'all';
+const backPath = status ? `/admin/products/${status}` : '/admin/products';
+---
+
+<AdminLayout title={copy[key].title} active={key}>
+  <div class="admin-pagehead">
+    <div>
+      <h1>{copy[key].title}</h1>
+      <p class="admin-lede">{copy[key].lede}</p>
+    </div>
+  </div>
+
+  {
+    notice && (
+      <Notice kind="success">
+        <span>{notice.text}</span>
+        {notice.productId && (
+          <span class="notice__actions">
+            <a href={`/admin/products/${notice.productId}?back=${encodeURIComponent(backPath)}`}>
+              View product
+            </a>
+          </span>
+        )}
+      </Notice>
+    )
+  }
+
+  <AdminTabs counts={counts} active={key} />
+  <ProductQueueTable rows={rows} backPath={backPath} emptyText={copy[key].empty} />
+</AdminLayout>

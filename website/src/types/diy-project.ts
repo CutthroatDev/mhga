@@ -6,6 +6,8 @@ export interface DIYProject {
   slug: string;
   title: string;
   summary: string;
+  /** Optional long-form content, reserved for later. */
+  body?: string;
   difficulty: DIYDifficulty;
   /** Free-form for now, e.g. "2 hours". */
   estimatedTime?: string;

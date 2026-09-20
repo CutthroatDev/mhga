@@ -1,0 +1,23 @@
+---
+// LOCAL-ONLY: approved products. Never prerender.
+export const prerender = false;
+
+import QueueView from '@/admin/components/QueueView.astro';
+import { localAdminDenied } from '@/server/admin/access';
+import { getRepositories, readNotice } from '@/server/admin/context';
+
+const denied = localAdminDenied(Astro.request);
+if (denied) return denied;
+
+const repos = getRepositories(Astro.locals);
+if (!repos) return new Response('Database unavailable', { status: 503 });
+Astro.response.headers.set('Cache-Control', 'no-store');
+
+const [counts, rows, notice] = await Promise.all([
+  repos.adminReview.getStatusCounts(),
+  repos.adminReview.listSummaries('approved'),
+  readNotice(Astro.url, repos),
+]);
+---
+
+<QueueView status="approved" counts={counts} rows={rows} notice={notice} />

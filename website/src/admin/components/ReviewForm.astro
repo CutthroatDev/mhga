@@ -1,0 +1,59 @@
+---
+// Internal notes + status actions. Posts to the local-only admin endpoint.
+// Offers only the transitions that make sense for the current status.
+import type { ProductReviewStatus } from '@/types';
+import { LIMITS } from '@/server/admin/validation';
+
+interface Props {
+  productId: string;
+  status: ProductReviewStatus;
+  notes?: string;
+  /** Queue to return to after a status change. */
+  backPath: string;
+  invalidNotes?: boolean;
+}
+
+const { productId, status, notes = '', backPath, invalidNotes = false } = Astro.props;
+---
+
+<form class="form" method="post" action={`/api/admin/products/${productId}/review`}>
+  <input type="hidden" name="return_to" value={backPath} />
+
+  <div class="field">
+    <label for="review-notes">Internal review notes</label>
+    <textarea
+      id="review-notes"
+      name="notes"
+      maxlength={LIMITS.reviewNotes}
+      aria-describedby="review-notes-hint"
+      aria-invalid={invalidNotes ? 'true' : undefined}>{notes}</textarea>
+    <p id="review-notes-hint" class="hint">
+      Only visible here. Never shown on the public site. Saved with Approve/Reject, or on its own.
+    </p>
+  </div>
+
+  <div class="actions actions--stack">
+    {
+      status !== 'approved' && (
+        <button class="admin-btn admin-btn--approve" type="submit" name="status" value="approved">
+          Approve
+        </button>
+      )
+    }
+    {
+      status !== 'rejected' && (
+        <button class="admin-btn admin-btn--reject" type="submit" name="status" value="rejected">
+          Reject
+        </button>
+      )
+    }
+    {
+      status !== 'pending' && (
+        <button class="admin-btn" type="submit" name="status" value="pending">
+          Return to pending
+        </button>
+      )
+    }
+    <button class="admin-btn" type="submit">Save notes only</button>
+  </div>
+</form>

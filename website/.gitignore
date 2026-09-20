@@ -5,9 +5,11 @@ node_modules/
 dist/
 .astro/
 
-# Cloudflare
+# Cloudflare local state (local D1 database files, caches) and secrets.
+# migrations/, seeds/, wrangler.jsonc and worker-configuration.d.ts ARE tracked.
 .wrangler/
 .dev.vars
+.dev.vars.*
 
 # Environment / secrets
 .env
@@ -28,4 +30,3 @@ coverage/
 
 # claude
 prompt.md
-AGENTS.md

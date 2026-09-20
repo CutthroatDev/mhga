@@ -1,0 +1,64 @@
+---
+// Reusable product review table. On small screens each row becomes a labelled card.
+import type { AdminProductSummary } from '@/server/domain/admin';
+import { formatCents, formatDate } from '@/admin/format';
+import StatusBadge from './StatusBadge.astro';
+
+interface Props {
+  rows: AdminProductSummary[];
+  /** Queue path to return to after reviewing, e.g. /admin/products/pending */
+  backPath: string;
+  emptyText?: string;
+}
+
+const { rows, backPath, emptyText = 'No products here.' } = Astro.props;
+---
+
+<div class="table-wrap">
+  {
+    rows.length === 0 ? (
+      <p class="empty-queue">{emptyText}</p>
+    ) : (
+      <table class="queue">
+        <thead>
+          <tr>
+            <th scope="col">Product</th>
+            <th scope="col">Category</th>
+            <th scope="col">Status</th>
+            <th scope="col">Retailer</th>
+            <th scope="col">Price</th>
+            <th scope="col">Created</th>
+            <th scope="col"><span class="visually-hidden">Review</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => {
+            const href = `/admin/products/${row.id}?back=${encodeURIComponent(backPath)}`;
+            return (
+              <tr>
+                <td class="name" data-label="Product">
+                  <a href={href}>{row.name}</a>
+                  <small>{row.slug}{row.hasReviewNotes ? ' · has internal notes' : ''}</small>
+                </td>
+                <td data-label="Category">{row.categoryLabel}</td>
+                <td data-label="Status"><StatusBadge status={row.reviewStatus} /></td>
+                <td data-label="Retailer">
+                  {row.retailerName ?? <span class="muted">No offer</span>}
+                </td>
+                <td data-label="Price" class="num">{formatCents(row.priceCents, row.currency)}</td>
+                <td data-label="Created" class="num">
+                  <time datetime={row.createdAt}>{formatDate(row.createdAt)}</time>
+                </td>
+                <td class="action">
+                  <a class="admin-btn admin-btn--small admin-btn--primary" href={href}>
+                    Review<span class="visually-hidden">: {row.name}</span>
+                  </a>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    )
+  }
+</div>

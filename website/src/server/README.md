@@ -1,16 +1,38 @@
-# Server code (placeholder)
+# Server code
 
-Reserved for future backend functionality. Nothing is implemented yet.
+Server-only code: the D1 database layer, repositories, and the local-only admin logic.
+Public pages and components must never import from this directory. Only server routes
+(`src/pages/api/*`) and the local-only admin (`src/pages/admin/*`, `src/admin/`) may.
 
-Expected contents over time:
+See "Backend / Database" in the root `README.md` for the workflow and architecture.
 
-- product ingestion (collecting product data from retailers)
-- the review workflow (`pending` → `approved` / `rejected`)
-- API handlers used by the admin area
+```
+db/            Database wrapper (bound statements only), row types, helpers, locals accessor
+domain/        Internal models (some hold internal-only data such as review notes)
+repositories/  Public reads, admin operations, admin review read models, mappers
+admin/         Local-only admin: access guard, validation, HTTP helpers, messages
+```
+
+Routes using this layer today: `src/pages/api/health.ts` (just `Database.ping()`) and the
+local-only admin. The admin write endpoints (`/api/admin/*`) are refused outside a local dev
+server (see `src/admin/README.md`).
 
 ## Rules
 
-- Keep this separate from public presentation. Public pages and components read
-  data only through `src/data-access/`, which exposes approved products only.
-- Public UI code must not import from this directory.
-- Runs on Cloudflare (Workers runtime): no Node-only APIs unless verified compatible.
+- **Public vs internal.** `PublicProductRepository` and `DIYProjectRepository` return
+  approved/published data as the public types in `src/types/`. `AdminProductRepository`,
+  `RetailerRepository`, and `OfferRepository` are internal: they can see everything,
+  including review notes, and must never feed a public page.
+- **Public queries never select internal columns.** All public product SQL is built from
+  `public-product-query.ts`. Add columns there deliberately.
+- **No SQL outside this directory.** Pages/components call `src/data-access/` (today static
+  data). Switching that layer to these repositories is a later, separate step.
+- **Bound values only.** Use `Database.statement/all/first/run`. Never concatenate values into SQL.
+- **No public write endpoints.** The only write endpoints are the local-only admin ones, which
+  are guarded by `src/server/admin/access.ts` and disabled in production builds.
+- Runs in the Cloudflare Workers runtime: no Node-only APIs unless verified compatible.
+- Use relative imports here (keeps the code loadable outside Astro's alias config).
+
+## Not built yet
+
+Ingestion, authentication (Cloudflare Access), offer editing, affiliate handling, price tracking.

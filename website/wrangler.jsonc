@@ -1,11 +1,35 @@
-// Cloudflare Workers configuration (static assets).
-// Deploy with `npm run deploy`, or connect the repo in the Cloudflare dashboard
-// with build command `npm run build` and output directory `dist`.
+// Cloudflare Worker configuration.
+//
+// The site is mostly static (prerendered into dist/) with a small Worker in front for
+// on-demand routes (e.g. /api/health, future /admin). Static files are served straight
+// from the ASSETS binding; the Worker only runs for routes that are not prerendered.
+//
+// NOTE: do not add "not_found_handling" under "assets". It would make Cloudflare answer
+// unknown paths (such as /api/*) with a static 404 page instead of running the Worker.
+// The Astro adapter serves the prerendered 404 page itself.
 {
-  "name": "halloween-site",
-  "compatibility_date": "2025-09-01",
-  "assets": {
-    "directory": "./dist",
-    "not_found_handling": "404-page"
-  }
+	"name": "halloween-site",
+	"main": "./dist/_worker.js/index.js",
+	"compatibility_date": "2025-09-01",
+	"compatibility_flags": [
+		"nodejs_compat",
+		"global_fetch_strictly_public"
+	],
+	"assets": {
+		"binding": "ASSETS",
+		"directory": "./dist"
+	},
+	// D1 database, available in server code as `env.DB`.
+	//
+	// Local development (astro dev, wrangler dev --local, the db:*:local scripts) uses a local
+	// D1 simulation stored in .wrangler/state and never touches this remote database. Remote
+	// commands are only the *:remote scripts. See "Backend / Database" in README.md.
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "halloween-site-db",
+			"database_id": "20b6e513-3d2c-438c-a0f7-745c8d94a25a",
+			"migrations_dir": "migrations"
+		}
+	]
 }

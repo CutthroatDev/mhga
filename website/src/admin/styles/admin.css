@@ -1,0 +1,934 @@
+/*
+ * Admin visual system. Restrained and functional: reuses the public site's tokens, fonts
+ * and header band so it feels related, but has no decorative characters.
+ *
+ * IMPORTANT: this file is inlined into server-rendered admin pages (AdminLayout imports it
+ * with ?raw). It must NOT be imported as a normal stylesheet: that would put it in the
+ * bundler's CSS graph, split the public site's CSS into extra chunks, and publish an admin
+ * stylesheet as a public static file. Design tokens come from tokens.css / theme.css (also
+ * inlined by the layout); the base rules below stand in for src/styles/global.css, which the
+ * admin deliberately does not share with the public site.
+ */
+
+/* ---------- Base (admin counterpart of global.css) ---------- */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-padding-top: var(--space-4);
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--text-md);
+  line-height: 1.6;
+  color: var(--color-text);
+  background: var(--color-bg);
+}
+
+main {
+  flex: 1;
+}
+
+main:focus {
+  outline: none;
+}
+
+img,
+svg {
+  max-width: 100%;
+}
+
+img {
+  display: block;
+  height: auto;
+}
+
+a {
+  color: var(--color-accent-text);
+  text-underline-offset: 0.2em;
+}
+
+a:hover {
+  color: var(--color-accent-hover);
+}
+
+h1,
+h2,
+h3,
+h4 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+
+h1 {
+  font-size: var(--text-3xl);
+}
+
+h2 {
+  font-size: var(--text-2xl);
+}
+
+h3 {
+  font-size: var(--text-xl);
+}
+
+p {
+  margin: 0;
+}
+
+ul,
+ol {
+  margin: 0;
+  padding: 0;
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 3px;
+  border-radius: var(--radius-sm);
+}
+
+.band :focus-visible {
+  outline-color: var(--band-focus);
+}
+
+.band {
+  color: var(--band-text);
+  background: var(--band-bg);
+}
+
+.band a {
+  color: inherit;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-2);
+  z-index: 100;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-weight: 600;
+  transform: translateY(-200%);
+}
+
+.skip-link:focus {
+  transform: none;
+}
+
+/* Stand-in for a missing product image (same look as the public placeholder). */
+.image-placeholder {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  background: linear-gradient(135deg, var(--color-surface-sunken), #ebe0d1);
+  color: var(--color-border-strong);
+}
+
+.image-placeholder svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+/* ---------- Admin ---------- */
+
+.admin {
+  --admin-radius: 0.5rem;
+
+  /* Status colors always come with a text label and an icon shape (never color alone). */
+  --status-pending-bg: #fff1cc;
+  --status-pending-fg: #5c3b00;
+  --status-pending-line: #d9a53b;
+  --status-approved-bg: #dcf3e3;
+  --status-approved-fg: #10461f;
+  --status-approved-line: #5fb47a;
+  --status-rejected-bg: #fbdcdc;
+  --status-rejected-fg: #7a1616;
+  --status-rejected-line: #dd7f7f;
+
+  --btn-approve: #166534;
+  --btn-approve-hover: #114d27;
+  --btn-reject: #991b1b;
+  --btn-reject-hover: #7a1515;
+
+  --measure: 72rem;
+}
+
+/* ---------- Shell ---------- */
+
+.admin-header {
+  border-bottom: 1px solid var(--band-line);
+}
+
+.admin-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+  max-width: var(--measure);
+  margin-inline: auto;
+  padding: var(--space-2) var(--gutter);
+}
+
+.admin-brand {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-height: 2.75rem;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--band-text);
+  text-decoration: none;
+  align-self: center;
+}
+
+.admin-brand small {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--band-accent);
+}
+
+.admin-nav ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.admin-nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.5rem;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-pill);
+  color: var(--band-text);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.admin-nav a:hover {
+  background: var(--band-surface);
+}
+
+.admin-nav a[aria-current='page'] {
+  background: var(--band-accent);
+  color: var(--band-accent-contrast);
+}
+
+.admin-public-link {
+  margin-left: auto;
+  color: var(--band-muted);
+  font-size: var(--text-sm);
+}
+
+.admin-banner {
+  padding: var(--space-2) var(--gutter);
+  background: #fff1cc;
+  border-bottom: 1px solid #d9a53b;
+  color: #5c3b00;
+  font-size: var(--text-sm);
+  text-align: center;
+}
+
+.admin-banner strong {
+  letter-spacing: 0.04em;
+}
+
+.admin-main {
+  /* Explicit width: body is a column flexbox, and auto side margins would otherwise size
+     this to its content and let a wide child stretch the whole page. */
+  width: 100%;
+  max-width: var(--measure);
+  margin-inline: auto;
+  padding: var(--space-4) var(--gutter) var(--space-6);
+}
+
+.admin-main h1 {
+  font-size: var(--text-2xl);
+}
+
+.admin-main h2 {
+  font-size: var(--text-xl);
+}
+
+.admin-lede {
+  margin-top: var(--space-1);
+  color: var(--color-text-muted);
+}
+
+.admin-crumbs {
+  margin-bottom: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.admin-crumbs a {
+  color: inherit;
+}
+
+.admin-pagehead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+/* ---------- Notices ---------- */
+
+.notice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+  align-items: center;
+  margin-bottom: var(--space-4);
+  padding: var(--space-3);
+  border: 1px solid;
+  border-radius: var(--admin-radius);
+}
+
+.notice--success {
+  background: var(--status-approved-bg);
+  border-color: var(--status-approved-line);
+  color: var(--status-approved-fg);
+}
+
+.notice--error {
+  background: var(--status-rejected-bg);
+  border-color: var(--status-rejected-line);
+  color: var(--status-rejected-fg);
+}
+
+.notice--info {
+  background: var(--color-surface);
+  border-color: var(--color-border-strong);
+}
+
+.notice a {
+  color: inherit;
+  font-weight: 700;
+}
+
+.notice__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-left: auto;
+}
+
+/* ---------- Status badge ---------- */
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.15rem 0.6rem 0.15rem 0.45rem;
+  border: 1px solid;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.status svg {
+  flex: none;
+  width: 0.9rem;
+  height: 0.9rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.status--pending {
+  background: var(--status-pending-bg);
+  border-color: var(--status-pending-line);
+  color: var(--status-pending-fg);
+}
+
+.status--approved {
+  background: var(--status-approved-bg);
+  border-color: var(--status-approved-line);
+  color: var(--status-approved-fg);
+}
+
+.status--rejected {
+  background: var(--status-rejected-bg);
+  border-color: var(--status-rejected-line);
+  color: var(--status-rejected-fg);
+}
+
+/* ---------- Buttons ---------- */
+
+.admin-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 2.75rem;
+  padding: 0.5rem 1.1rem;
+  border: 2px solid var(--color-border-strong);
+  border-radius: var(--admin-radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  line-height: 1.2;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.admin-btn:hover {
+  border-color: var(--color-text);
+  color: var(--color-text);
+}
+
+.admin-btn--primary {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-accent-contrast);
+}
+
+.admin-btn--primary:hover {
+  background: var(--color-accent-hover);
+  border-color: var(--color-accent-hover);
+  color: var(--color-accent-contrast);
+}
+
+.admin-btn--approve {
+  background: var(--btn-approve);
+  border-color: var(--btn-approve);
+  color: #fff;
+}
+
+.admin-btn--approve:hover {
+  background: var(--btn-approve-hover);
+  border-color: var(--btn-approve-hover);
+  color: #fff;
+}
+
+.admin-btn--reject {
+  background: var(--btn-reject);
+  border-color: var(--btn-reject);
+  color: #fff;
+}
+
+.admin-btn--reject:hover {
+  background: var(--btn-reject-hover);
+  border-color: var(--btn-reject-hover);
+  color: #fff;
+}
+
+.admin-btn--small {
+  min-height: 2.25rem;
+  padding: 0.25rem 0.85rem;
+}
+
+/* ---------- Dashboard ---------- */
+
+.stats {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  margin: 0 0 var(--space-5);
+  padding: 0;
+  list-style: none;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  height: 100%;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-left-width: 6px;
+  border-radius: var(--admin-radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+  text-decoration: none;
+  box-shadow: var(--shadow-sm);
+}
+
+.stat:hover {
+  box-shadow: var(--shadow-md);
+  color: var(--color-text);
+}
+
+.stat--pending {
+  border-left-color: var(--status-pending-line);
+}
+.stat--approved {
+  border-left-color: var(--status-approved-line);
+}
+.stat--rejected {
+  border-left-color: var(--status-rejected-line);
+}
+
+.stat__count {
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.stat__label {
+  font-weight: 700;
+}
+
+.stat__hint {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+/* ---------- Tabs ---------- */
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  list-style: none;
+  border-bottom: 2px solid var(--color-border);
+}
+
+.tabs a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2.75rem;
+  padding: 0 var(--space-3);
+  margin-bottom: -2px;
+  border-bottom: 3px solid transparent;
+  color: var(--color-text-muted);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.tabs a:hover {
+  color: var(--color-text);
+}
+
+.tabs a[aria-current='page'] {
+  border-bottom-color: var(--color-accent);
+  color: var(--color-text);
+}
+
+.tabs .count {
+  padding: 0 0.5rem;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-sunken);
+  font-size: var(--text-xs);
+  line-height: 1.6;
+}
+
+/* ---------- Queue table ---------- */
+
+.table-wrap {
+  overflow-x: auto; /* safety net; the card layout below 64rem normally avoids this */
+  border: 1px solid var(--color-border);
+  border-radius: var(--admin-radius);
+  background: var(--color-surface);
+}
+
+.queue {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.queue th,
+.queue td {
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.queue thead th {
+  background: var(--color-surface-sunken);
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.queue tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.queue .name a {
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.queue .name small {
+  display: block;
+  color: var(--color-text-muted);
+}
+
+.queue .num {
+  white-space: nowrap;
+}
+
+.empty-queue {
+  padding: var(--space-5) var(--space-4);
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+/* Below desktop width, each row becomes a card with labelled values (a 7-column table
+   does not fit a tablet). */
+@media (max-width: 63.99rem) {
+  .queue thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+
+  .queue,
+  .queue tbody,
+  .queue tr,
+  .queue td {
+    display: block;
+  }
+
+  .queue tr {
+    padding: var(--space-3);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .queue tbody tr:last-child {
+    border-bottom: 0;
+  }
+
+  .queue td {
+    display: flex;
+    gap: var(--space-3);
+    justify-content: space-between;
+    padding: var(--space-1) 0;
+    border: 0;
+  }
+
+  .queue td::before {
+    content: attr(data-label);
+    flex: none;
+    color: var(--color-text-muted);
+    font-size: var(--text-xs);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .queue td.name {
+    display: block;
+  }
+
+  .queue td.name::before {
+    display: none;
+  }
+
+  .queue td.action {
+    justify-content: flex-start;
+    padding-top: var(--space-2);
+  }
+
+  .queue td.action::before {
+    display: none;
+  }
+}
+
+/* ---------- Review page ---------- */
+
+.review-grid {
+  display: grid;
+  gap: var(--space-4);
+}
+
+@media (min-width: 62rem) {
+  .review-grid {
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .review-side {
+    position: sticky;
+    top: var(--space-3);
+  }
+}
+
+.panel {
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--admin-radius);
+  background: var(--color-surface);
+}
+
+.panel + .panel {
+  margin-top: var(--space-4);
+}
+
+.admin-main .panel__label {
+  display: inline-block;
+  margin-bottom: var(--space-2);
+  font-family: var(--font-body);
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  font-weight: 800;
+  line-height: 1.5;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.panel--public {
+  border-top: 4px solid var(--status-approved-line);
+}
+
+.admin-main .panel--public .panel__label {
+  background: var(--status-approved-bg);
+  color: var(--status-approved-fg);
+}
+
+.panel--internal {
+  border-top: 4px solid var(--status-pending-line);
+  background: #fffdf6;
+}
+
+.admin-main .panel--internal .panel__label {
+  background: var(--status-pending-bg);
+  color: var(--status-pending-fg);
+}
+
+.panel__intro {
+  margin-bottom: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.public-media {
+  overflow: hidden;
+  max-width: 22rem;
+  margin-bottom: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--admin-radius);
+}
+
+.public-media img {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+}
+
+.fieldlist {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.fieldlist > div {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.fieldlist dt {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.fieldlist dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.fieldlist ul {
+  margin: 0;
+  padding-left: var(--space-4);
+}
+
+.muted {
+  color: var(--color-text-muted);
+}
+
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pill {
+  padding: 0.1rem 0.6rem;
+  border-radius: var(--radius-pill);
+  background: var(--color-accent-soft);
+  color: var(--color-accent-soft-text);
+  font-size: var(--text-xs);
+  font-weight: 700;
+}
+
+.visibility {
+  margin-bottom: var(--space-4);
+}
+
+/* ---------- Forms ---------- */
+
+.form {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.field {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.field label,
+.field .label {
+  font-weight: 700;
+}
+
+.field .hint {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  border: 2px solid var(--color-border-strong);
+  border-radius: var(--admin-radius);
+  background: #fff;
+  color: var(--color-text);
+  font: inherit;
+}
+
+.field textarea {
+  min-height: 7rem;
+  resize: vertical;
+}
+
+.field input:focus-visible,
+.field select:focus-visible,
+.field textarea:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 1px;
+}
+
+.field [aria-invalid='true'] {
+  border-color: var(--btn-reject);
+  background: #fff8f8;
+}
+
+.field .field-error {
+  color: var(--status-rejected-fg);
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.actions--stack .admin-btn {
+  flex: 1 1 auto;
+}
+
+.edit {
+  margin-top: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--admin-radius);
+  background: var(--color-surface);
+}
+
+.edit > summary {
+  padding: var(--space-3) var(--space-4);
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.edit[open] > summary {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.edit .form {
+  padding: var(--space-4);
+}
+
+/* ---------- Offers table (reuses .queue rules) ---------- */
+
+.offers .url {
+  max-width: 18rem;
+  overflow-wrap: anywhere;
+}
+
+.tag {
+  display: inline-block;
+  padding: 0 0.5rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  font-weight: 700;
+}
+
+.tag--primary {
+  background: var(--color-text);
+  border-color: var(--color-text);
+  color: #fff;
+}

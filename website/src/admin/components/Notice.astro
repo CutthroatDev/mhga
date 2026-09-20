@@ -1,0 +1,12 @@
+---
+interface Props {
+  kind?: 'success' | 'error' | 'info';
+}
+
+const { kind = 'info' } = Astro.props;
+---
+
+<!-- Errors are announced immediately; confirmations politely. -->
+<div class={`notice notice--${kind}`} role={kind === 'error' ? 'alert' : 'status'}>
+  <slot />
+</div>

@@ -1,0 +1,55 @@
+---
+// Read-only view of a product's retailer offers. (No affiliate data is shown or editable.)
+import type { AdminOfferView } from '@/server/domain/admin';
+import { AVAILABILITY_LABELS, formatCents, formatDate } from '@/admin/format';
+
+interface Props {
+  offers: AdminOfferView[];
+}
+
+const { offers } = Astro.props;
+---
+
+<div class="table-wrap offers">
+  {
+    offers.length === 0 ? (
+      <p class="empty-queue">No offers yet. A product needs an offer from an active retailer to be public.</p>
+    ) : (
+      <table class="queue">
+        <thead>
+          <tr>
+            <th scope="col">Retailer</th>
+            <th scope="col">Retailer product URL</th>
+            <th scope="col">Price</th>
+            <th scope="col">Currency</th>
+            <th scope="col">Availability</th>
+            <th scope="col">Preferred</th>
+            <th scope="col">Last checked</th>
+          </tr>
+        </thead>
+        <tbody>
+          {offers.map((offer) => (
+            <tr>
+              <td class="name" data-label="Retailer">
+                <strong>{offer.retailerName}</strong>
+                {!offer.retailerIsActive && <small>Inactive retailer: not used publicly</small>}
+              </td>
+              <td class="url" data-label="URL">
+                <a href={offer.productUrl} target="_blank" rel="noopener noreferrer">
+                  {offer.productUrl}<span class="visually-hidden"> (opens in a new tab)</span>
+                </a>
+              </td>
+              <td class="num" data-label="Price">{formatCents(offer.priceCents, offer.currency)}</td>
+              <td data-label="Currency">{offer.currency}</td>
+              <td data-label="Availability">{AVAILABILITY_LABELS[offer.availability] ?? offer.availability}</td>
+              <td data-label="Preferred">
+                {offer.isPrimary ? <span class="tag tag--primary">Primary</span> : <span class="muted">No</span>}
+              </td>
+              <td class="num" data-label="Last checked">{formatDate(offer.lastCheckedAt)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    )
+  }
+</div>
