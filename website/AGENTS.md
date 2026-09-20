@@ -21,6 +21,17 @@ folder structure.
 - Avoid unnecessary dependencies; prefer the platform, Astro, and plain CSS.
 - Verify changes with `npm run build` (and `npm run check` for types).
 
+## Tests
+
+- Keep automated tests **focused on business/data integrity** (`tests/`, run with `npm test`).
+- **Do not add broad UI, browser, screenshot, responsive, or CSS tests** unless explicitly requested.
+- **Preserve the core public-product eligibility tests** (`tests/catalog-visibility.test.ts`) when
+  changing ingestion, review, repositories, or offers. If a rule intentionally changes, change the
+  rule and its test together; never delete or weaken a test just to make it pass.
+- Tests use an isolated in-memory D1 built from the real `migrations/`. Never point them at
+  `.wrangler/state` or a remote database, and do not duplicate the schema in test code.
+- Run `npm test`, `npm run check` and `npm run build` before finishing.
+
 ## Public catalog (D1)
 
 - **D1 is the source of truth for public products.** Never reintroduce static/sample product data

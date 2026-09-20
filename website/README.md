@@ -26,7 +26,8 @@ npm install        # install dependencies
 npm run dev        # start the dev server at http://localhost:4321
 npm run build      # build into dist/ (prerendered pages + Worker in dist/_worker.js)
 npm run preview    # serve the BUILT site locally with wrangler dev (local D1 only)
-npm run check      # type-check .astro and .ts files
+npm run check      # type-check .astro and .ts files (including tests)
+npm test           # run the focused business-rule tests (see Tests)
 ```
 
 The public pages work with just these commands. The database commands below are only
@@ -299,10 +300,38 @@ When the production hostname exists, put Cloudflare Access in front of `/admin*`
 `/api/admin*`, verify the Access identity in the server (do not rely only on the edge), and
 then decide deliberately whether to keep or replace this guard. See `src/admin/README.md`.
 
+## Tests
+
+```sh
+npm test              # run once, non-interactive
+npm run test:watch    # re-run on change while developing
+```
+
+A small [Vitest](https://vitest.dev) suite (10 tests) that protects the **product visibility and
+review rules**, the rules that keep unreviewed or unsafe products off the public site. It runs the
+real repositories, with nothing mocked.
+
+**Covered:** pending and rejected products are hidden; an approved product with an eligible offer is
+public; an inactive retailer, a discontinued-only offer, or an unsafe (non-http/https) purchase URL
+keeps a product hidden; review notes and admin fields never appear in public output; pending → approved
+makes a product public immediately, and approved → rejected/pending hides it; the primary eligible
+offer wins, else the cheapest eligible one. Each "hidden" case includes an eligible control product, so
+a broken fixture cannot pass by accident.
+
+**How it works:** each test file builds its own **in-memory D1** (Miniflare, the same engine as local D1)
+from the real `migrations/*.sql`, so a schema change that breaks the repositories fails the tests. It
+never touches `.wrangler/state` (your local dev database), never reads `wrangler.jsonc`, and cannot
+reach the remote database.
+
+**Intentionally not covered:** UI, rendered HTML, components, CSS, themes, navigation, accessibility,
+responsive layout, admin screens and forms, browser interaction, Cloudflare Access, deployment, and
+generic framework or SQL-constraint behavior. Check those manually.
+
 ## Folder structure
 
 ```
 migrations/             D1 migrations (committed; the schema history)
+tests/                  Focused business-rule tests (Vitest) and their helpers
 seeds/                  LOCAL-only placeholder seed data
 public/                 Static files served as-is (favicon, .assetsignore)
 worker-configuration.d.ts   Generated Cloudflare binding types (committed)
