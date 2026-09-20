@@ -1,0 +1,14 @@
+---
+import CategoryPage from '@/components/categories/CategoryPage.astro';
+import { getNavChildren } from '@/config/site';
+import { getApprovedProducts } from '@/data-access';
+
+const products = await getApprovedProducts({ section: 'decorations' });
+---
+
+<CategoryPage
+  title="Decoration Products"
+  description="All approved Halloween decoration products."
+  products={products}
+  subNavItems={getNavChildren('/decorations')}
+/>

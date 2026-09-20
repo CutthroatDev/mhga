@@ -1,0 +1,40 @@
+---
+import type { DIYProject } from '@/types';
+import DIYProjectCard from './DIYProjectCard.astro';
+
+interface Props {
+  projects: DIYProject[];
+  emptyMessage?: string;
+}
+
+const { projects, emptyMessage = 'No projects yet. Check back soon.' } = Astro.props;
+---
+
+{
+  projects.length > 0 ? (
+    <ul class="grid">
+      {projects.map((project) => (
+        <li>
+          <DIYProjectCard project={project} />
+        </li>
+      ))}
+    </ul>
+  ) : (
+    <p class="empty">{emptyMessage}</p>
+  )
+}
+
+<style>
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+    gap: var(--space-4);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .empty {
+    color: var(--color-text-muted);
+  }
+</style>

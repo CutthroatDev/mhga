@@ -1,0 +1,57 @@
+---
+import type { NavItem } from '@/types';
+import { isActivePath } from '@/utils/routes';
+
+interface Props {
+  items: NavItem[];
+  label?: string;
+}
+
+const { items, label = 'Section' } = Astro.props;
+const currentPath = Astro.url.pathname;
+---
+
+{
+  items.length > 0 && (
+    <nav aria-label={label}>
+      <ul>
+        {items.map((item) => (
+          <li>
+            <a
+              href={item.href}
+              aria-current={isActivePath(currentPath, item.href) ? 'page' : undefined}
+            >
+              {item.label}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  )
+}
+
+<style>
+  ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin: var(--space-3) 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  a {
+    display: inline-block;
+    padding: var(--space-1) var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    background: var(--color-bg);
+    text-decoration: none;
+  }
+
+  a[aria-current='page'] {
+    background: var(--color-accent);
+    color: var(--color-accent-contrast);
+    border-color: var(--color-accent);
+  }
+</style>

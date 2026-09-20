@@ -1,0 +1,15 @@
+---
+import Container from './Container.astro';
+---
+
+<Container>
+  <div class="section">
+    <slot />
+  </div>
+</Container>
+
+<style>
+  .section {
+    padding-block: var(--space-4);
+  }
+</style>

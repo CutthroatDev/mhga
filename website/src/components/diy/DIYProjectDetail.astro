@@ -1,0 +1,37 @@
+---
+import type { DIYProject } from '@/types';
+
+interface Props {
+  project: DIYProject;
+}
+
+const { project } = Astro.props;
+---
+
+<article>
+  <h1>{project.title}</h1>
+  <p>{project.summary}</p>
+  <p class="meta">
+    Difficulty: {project.difficulty}{project.estimatedTime && ` · ${project.estimatedTime}`}
+  </p>
+  {
+    project.imageUrl && (
+      <img src={project.imageUrl} alt={project.imageAlt ?? project.title} />
+    )
+  }
+  <h2>Materials</h2>
+  <ul>
+    {project.materials.map((material) => <li>{material}</li>)}
+  </ul>
+  <h2>Steps</h2>
+  <ol>
+    {project.steps.map((step) => <li>{step}</li>)}
+  </ol>
+</article>
+
+<style>
+  .meta {
+    color: var(--color-text-muted);
+    text-transform: capitalize;
+  }
+</style>

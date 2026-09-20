@@ -1,0 +1,20 @@
+---
+import type { GetStaticPaths } from 'astro';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import Section from '@/components/layout/Section.astro';
+import DIYProjectDetail from '@/components/diy/DIYProjectDetail.astro';
+import { getPublishedDIYProjects } from '@/data-access';
+
+export const getStaticPaths = (async () => {
+  const projects = await getPublishedDIYProjects();
+  return projects.map((project) => ({ params: { slug: project.slug }, props: { project } }));
+}) satisfies GetStaticPaths;
+
+const { project } = Astro.props;
+---
+
+<BaseLayout title={project.title} description={project.summary}>
+  <Section>
+    <DIYProjectDetail project={project} />
+  </Section>
+</BaseLayout>

@@ -1,0 +1,69 @@
+---
+import type { DIYProject } from '@/types';
+import { diyProjectPath } from '@/utils/routes';
+
+interface Props {
+  project: DIYProject;
+}
+
+const { project } = Astro.props;
+---
+
+<article class="card">
+  <a href={diyProjectPath(project.slug)}>
+    {
+      project.imageUrl ? (
+        <img src={project.imageUrl} alt={project.imageAlt ?? project.title} loading="lazy" />
+      ) : (
+        <div class="image-placeholder" aria-hidden="true" />
+      )
+    }
+    <h3>{project.title}</h3>
+  </a>
+  <p class="summary">{project.summary}</p>
+  <p class="meta">
+    {project.difficulty}{project.estimatedTime && ` · ${project.estimatedTime}`}
+  </p>
+</article>
+
+<style>
+  .card {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  a {
+    text-decoration: none;
+  }
+
+  h3 {
+    margin: var(--space-3) var(--space-3) var(--space-2);
+    font-size: 1.125rem;
+  }
+
+  .image-placeholder {
+    aspect-ratio: 4 / 3;
+    background: var(--color-surface);
+  }
+
+  img {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+  }
+
+  .summary,
+  .meta {
+    margin: 0 var(--space-3) var(--space-3);
+  }
+
+  .summary {
+    color: var(--color-text-muted);
+  }
+
+  .meta {
+    font-size: 0.875rem;
+    text-transform: capitalize;
+  }
+</style>

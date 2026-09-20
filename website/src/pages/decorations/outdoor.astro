@@ -1,0 +1,15 @@
+---
+import CategoryPage from '@/components/categories/CategoryPage.astro';
+import { getNavChildren } from '@/config/site';
+import { getApprovedProducts, getCategoryBySlug } from '@/data-access';
+
+const category = await getCategoryBySlug('decorations', 'outdoor');
+const products = await getApprovedProducts({ section: 'decorations', categorySlug: 'outdoor' });
+---
+
+<CategoryPage
+  title={category?.name ?? 'Outdoor Decorations'}
+  description={category?.description}
+  products={products}
+  subNavItems={getNavChildren('/decorations')}
+/>

@@ -1,0 +1,40 @@
+---
+import type { Product } from '@/types';
+import ProductCard from './ProductCard.astro';
+
+interface Props {
+  products: Product[];
+  emptyMessage?: string;
+}
+
+const { products, emptyMessage = 'No products yet. Check back soon.' } = Astro.props;
+---
+
+{
+  products.length > 0 ? (
+    <ul class="grid">
+      {products.map((product) => (
+        <li>
+          <ProductCard product={product} />
+        </li>
+      ))}
+    </ul>
+  ) : (
+    <p class="empty">{emptyMessage}</p>
+  )
+}
+
+<style>
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+    gap: var(--space-4);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .empty {
+    color: var(--color-text-muted);
+  }
+</style>

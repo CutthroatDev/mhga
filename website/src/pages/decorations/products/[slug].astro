@@ -1,0 +1,21 @@
+---
+import type { GetStaticPaths } from 'astro';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import Section from '@/components/layout/Section.astro';
+import ProductDetail from '@/components/products/ProductDetail.astro';
+import { getApprovedProducts, getRetailerById } from '@/data-access';
+
+export const getStaticPaths = (async () => {
+  const products = await getApprovedProducts({ section: 'decorations' });
+  return products.map((product) => ({ params: { slug: product.slug }, props: { product } }));
+}) satisfies GetStaticPaths;
+
+const { product } = Astro.props;
+const retailer = await getRetailerById(product.retailerId);
+---
+
+<BaseLayout title={product.name} description={product.summary}>
+  <Section>
+    <ProductDetail product={product} retailer={retailer} />
+  </Section>
+</BaseLayout>

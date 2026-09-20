@@ -1,0 +1,47 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import PageHeader from '@/components/layout/PageHeader.astro';
+import Section from '@/components/layout/Section.astro';
+import Button from '@/components/ui/Button.astro';
+import { navItems, siteConfig } from '@/config/site';
+
+const sections = navItems.filter((item) => item.href !== '/' && item.href !== '/about');
+---
+
+<BaseLayout>
+  <PageHeader title={siteConfig.name} description={siteConfig.description} />
+  <Section>
+    <ul class="sections">
+      {
+        sections.map((item) => (
+          <li>
+            <h2>{item.label}</h2>
+            {item.description && <p>{item.description}</p>}
+            <Button href={item.href} variant="secondary">Browse {item.label}</Button>
+          </li>
+        ))
+      }
+    </ul>
+  </Section>
+</BaseLayout>
+
+<style>
+  .sections {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+    gap: var(--space-4);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .sections li {
+    padding: var(--space-4);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+  }
+
+  h2 {
+    margin-top: 0;
+  }
+</style>

@@ -1,0 +1,68 @@
+---
+import type { Product } from '@/types';
+import { formatPrice } from '@/utils/format';
+import { productPath } from '@/utils/routes';
+
+interface Props {
+  product: Product;
+}
+
+const { product } = Astro.props;
+const price = formatPrice(product.price);
+---
+
+<article class="card">
+  <a href={productPath(product.section, product.slug)}>
+    {
+      product.imageUrl ? (
+        <img src={product.imageUrl} alt={product.imageAlt ?? product.name} loading="lazy" />
+      ) : (
+        <div class="image-placeholder" aria-hidden="true" />
+      )
+    }
+    <h3>{product.name}</h3>
+  </a>
+  <p class="summary">{product.summary}</p>
+  {price && <p class="price">{price}</p>}
+</article>
+
+<style>
+  .card {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  a {
+    text-decoration: none;
+  }
+
+  h3 {
+    margin: var(--space-3) var(--space-3) var(--space-2);
+    font-size: 1.125rem;
+  }
+
+  .image-placeholder {
+    aspect-ratio: 4 / 3;
+    background: var(--color-surface);
+  }
+
+  img {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+  }
+
+  .summary,
+  .price {
+    margin: 0 var(--space-3) var(--space-3);
+  }
+
+  .summary {
+    color: var(--color-text-muted);
+  }
+
+  .price {
+    font-weight: 600;
+  }
+</style>

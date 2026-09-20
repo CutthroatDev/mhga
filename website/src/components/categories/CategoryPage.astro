@@ -1,0 +1,27 @@
+---
+import type { NavItem, Product } from '@/types';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import PageHeader from '@/components/layout/PageHeader.astro';
+import Section from '@/components/layout/Section.astro';
+import SubNav from '@/components/layout/SubNav.astro';
+import ProductGrid from '@/components/products/ProductGrid.astro';
+
+interface Props {
+  title: string;
+  description?: string;
+  products: Product[];
+  subNavItems?: NavItem[];
+  emptyMessage?: string;
+}
+
+const { title, description, products, subNavItems = [], emptyMessage } = Astro.props;
+---
+
+<BaseLayout title={title} description={description}>
+  <PageHeader title={title} description={description}>
+    <SubNav items={subNavItems} />
+  </PageHeader>
+  <Section>
+    <ProductGrid products={products} emptyMessage={emptyMessage} />
+  </Section>
+</BaseLayout>

@@ -1,0 +1,41 @@
+---
+import Container from './Container.astro';
+import { navItems, siteConfig } from '@/config/site';
+
+const year = new Date().getFullYear();
+---
+
+<footer class="site-footer">
+  <Container>
+    <nav aria-label="Footer">
+      <ul>
+        {navItems.map((item) => <li><a href={item.href}>{item.label}</a></li>)}
+      </ul>
+    </nav>
+    <p class="legal">&copy; {year} {siteConfig.name}</p>
+  </Container>
+</footer>
+
+<style>
+  .site-footer {
+    margin-top: var(--space-5);
+    padding-block: var(--space-4);
+    background: var(--color-surface);
+    border-top: 1px solid var(--color-border);
+  }
+
+  ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-4);
+    margin: 0 0 var(--space-3);
+    padding: 0;
+    list-style: none;
+  }
+
+  .legal {
+    margin: 0;
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
+  }
+</style>

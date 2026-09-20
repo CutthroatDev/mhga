@@ -1,0 +1,65 @@
+---
+import type { Product, Retailer } from '@/types';
+import { formatPrice } from '@/utils/format';
+import Button from '@/components/ui/Button.astro';
+
+interface Props {
+  product: Product;
+  retailer?: Retailer;
+}
+
+const { product, retailer } = Astro.props;
+const price = formatPrice(product.price);
+---
+
+<article class="detail">
+  {
+    product.imageUrl ? (
+      <img src={product.imageUrl} alt={product.imageAlt ?? product.name} />
+    ) : (
+      <div class="image-placeholder" aria-hidden="true" />
+    )
+  }
+  <div class="info">
+    <h1>{product.name}</h1>
+    {price && <p class="price">{price}</p>}
+    <p>{product.description ?? product.summary}</p>
+    {retailer && <p class="retailer">Sold by {retailer.name}</p>}
+    <Button href={product.sourceUrl} external>View at retailer</Button>
+  </div>
+</article>
+
+<style>
+  .detail {
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  @media (min-width: 48rem) {
+    .detail {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  .image-placeholder {
+    aspect-ratio: 4 / 3;
+    background: var(--color-surface);
+  }
+
+  img {
+    width: 100%;
+  }
+
+  h1 {
+    margin-top: 0;
+  }
+
+  .price {
+    font-size: 1.25rem;
+    font-weight: 600;
+  }
+
+  .retailer {
+    color: var(--color-text-muted);
+  }
+</style>

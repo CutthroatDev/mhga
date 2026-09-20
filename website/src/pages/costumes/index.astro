@@ -1,0 +1,16 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import PageHeader from '@/components/layout/PageHeader.astro';
+import Section from '@/components/layout/Section.astro';
+import SubNav from '@/components/layout/SubNav.astro';
+import { getNavChildren } from '@/config/site';
+---
+
+<BaseLayout title="Costumes">
+  <PageHeader title="Costumes" description="Halloween costumes for everyone.">
+    <SubNav items={getNavChildren('/costumes')} label="Costumes" />
+  </PageHeader>
+  <Section>
+    <p>Placeholder: costumes overview.</p>
+  </Section>
+</BaseLayout>

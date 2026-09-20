@@ -1,0 +1,52 @@
+---
+interface Props {
+  /** Renders an <a> when provided, otherwise a <button>. */
+  href?: string;
+  variant?: 'primary' | 'secondary';
+  type?: 'button' | 'submit';
+  external?: boolean;
+  class?: string;
+}
+
+const { href, variant = 'primary', type = 'button', external = false, class: className } = Astro.props;
+const classes = ['btn', `btn--${variant}`, className];
+---
+
+{
+  href ? (
+    <a
+      href={href}
+      class:list={classes}
+      target={external ? '_blank' : undefined}
+      rel={external ? 'noopener noreferrer' : undefined}
+    >
+      <slot />
+    </a>
+  ) : (
+    <button type={type} class:list={classes}>
+      <slot />
+    </button>
+  )
+}
+
+<style>
+  .btn {
+    display: inline-block;
+    padding: var(--space-2) var(--space-4);
+    border: 1px solid var(--color-accent);
+    border-radius: var(--radius);
+    font: inherit;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .btn--primary {
+    background: var(--color-accent);
+    color: var(--color-accent-contrast);
+  }
+
+  .btn--secondary {
+    background: transparent;
+    color: var(--color-accent);
+  }
+</style>
