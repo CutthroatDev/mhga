@@ -49,7 +49,13 @@ export class CatalogWorld {
   /** Created pending (as in real life), then moved to `status` if it is not pending. */
   async product(
     slug: string,
-    options: { status?: ProductReviewStatus; reviewNotes?: string; category?: string } = {},
+    options: {
+      status?: ProductReviewStatus;
+      reviewNotes?: string;
+      category?: string;
+      imageUrl?: string;
+      imageAlt?: string;
+    } = {},
   ): Promise<AdminProduct> {
     const { adminProducts, categories } = this.repos;
     const category = await categories.getBySlug(options.category ?? 'outdoor');
@@ -60,6 +66,8 @@ export class CatalogWorld {
       summary: `Summary of ${slug}`,
       categoryId: category.id,
       ...(options.reviewNotes ? { reviewNotes: options.reviewNotes } : {}),
+      ...(options.imageUrl !== undefined ? { imageUrl: options.imageUrl } : {}),
+      ...(options.imageAlt !== undefined ? { imageAlt: options.imageAlt } : {}),
     });
     const status = options.status ?? 'approved';
     if (status === 'pending') return created;
@@ -82,7 +90,10 @@ export class CatalogWorld {
   }
 
   /** Approved + active retailer + valid http(s) offer: the baseline that IS public. */
-  async eligibleProduct(slug: string, options: { category?: string } = {}): Promise<AdminProduct> {
+  async eligibleProduct(
+    slug: string,
+    options: { category?: string; imageUrl?: string; imageAlt?: string } = {},
+  ): Promise<AdminProduct> {
     const product = await this.product(slug, options);
     await this.offer(product, await this.retailer(`shop-${slug}`), { primary: true });
     return product;

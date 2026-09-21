@@ -11,6 +11,7 @@ import type {
   RetailerRecord,
 } from '../domain/catalog';
 import type { CategoryIndex } from '../domain/category-index';
+import { toPublicImageUrl } from '../domain/image-url';
 import { parseJsonArray, toBoolean } from '../db/helpers';
 import type {
   CategoryRow,
@@ -75,6 +76,9 @@ export function mapPublicProduct(row: PublicProductRow, categories: CategoryInde
   const qualityNotes = parseJsonArray<string>(row.quality_notes_json);
   const details = parseJsonArray<ProductDetailItem>(row.details_json);
   const badges = parseJsonArray<string>(row.badges_json);
+  // Only a safe http(s) image URL may become public. Otherwise: no image (the placeholder
+  // renders), and the product stays public. See domain/image-url.ts.
+  const imageUrl = toPublicImageUrl(row.image_url);
 
   return {
     product: {
@@ -85,8 +89,9 @@ export function mapPublicProduct(row: PublicProductRow, categories: CategoryInde
       categorySlugs: placement.categories.map((category) => category.slug),
       sourceUrl: row.offer_product_url,
       ...optional('description', row.description),
-      ...optional('imageUrl', row.image_url),
-      ...optional('imageAlt', row.image_alt),
+      ...optional('imageUrl', imageUrl),
+      // Alt text only means something alongside an image.
+      ...(imageUrl ? optional('imageAlt', row.image_alt) : {}),
       ...(row.offer_price_cents === null
         ? {}
         : {
@@ -137,6 +142,7 @@ export function mapOffer(row: OfferRow): ProductOffer {
 
 /** Public DIY project. Callers pass only published rows. */
 export function mapPublicDIYProject(row: DIYProjectRow, relatedProductSlugs: string[]): DIYProject {
+  const imageUrl = toPublicImageUrl(row.image_url); // public-safe http(s) only, else no image
   return {
     id: row.id,
     slug: row.slug,
@@ -148,8 +154,8 @@ export function mapPublicDIYProject(row: DIYProjectRow, relatedProductSlugs: str
     published: true,
     ...optional('body', row.body),
     ...optional('estimatedTime', row.estimated_time),
-    ...optional('imageUrl', row.image_url),
-    ...optional('imageAlt', row.image_alt),
+    ...optional('imageUrl', imageUrl),
+    ...(imageUrl ? optional('imageAlt', row.image_alt) : {}),
     ...nonEmpty('relatedProductSlugs', relatedProductSlugs),
   };
 }

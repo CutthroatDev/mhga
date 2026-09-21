@@ -42,6 +42,10 @@ folder structure.
 - **Public lookup by slug must enforce the same rules as list queries.** Use `getPublicCatalog()`
   methods, which share one query. A hidden/unknown/wrong-section slug returns the plain 404
   (`return new Response(null, { status: 404 })`), never a message explaining why.
+- **External product image URLs must be validated before entering public models.** Only `http(s)` URLs
+  are public-safe. Use `toPublicImageUrl()` (`src/server/domain/image-url.ts`) in the public mappers only;
+  never re-check schemes in pages/components, and never rewrite or proxy a URL. An invalid image degrades
+  to "no image" (the placeholder renders); it must never hide an otherwise eligible product.
 - **Internal review notes must never enter public models.** The public `Product` type has no id,
   status, or notes; keep it that way. Never select `review_notes` in a public query.
 - **Do not bypass the boundaries.** Public pages import only from `src/data-access/`. The catalog

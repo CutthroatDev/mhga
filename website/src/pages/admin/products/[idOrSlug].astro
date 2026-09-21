@@ -10,6 +10,7 @@ import ReviewForm from '@/admin/components/ReviewForm.astro';
 import StatusBadge from '@/admin/components/StatusBadge.astro';
 import { formatCents, formatDateTime } from '@/admin/format';
 import { localAdminDenied } from '@/server/admin/access';
+import { toPublicImageUrl } from '@/server/domain/image-url';
 import { getRepositories } from '@/server/admin/context';
 import { safeReturnPath } from '@/server/admin/http';
 import { errorFieldLabels, isNoticeCode, noticeText } from '@/server/admin/messages';
@@ -55,6 +56,10 @@ const invalidNotes = rawFields.includes('reviewNotes');
 
 const preferred = offers[0];
 const isPublic = publicItem !== undefined;
+
+// What the public site would use for the image: the sanitized value (http(s) only). The raw stored
+// value can be anything; it is shown in the internal panel as plain text and never as a link.
+const publicImageUrl = toPublicImageUrl(product.imageUrl);
 ---
 
 <AdminLayout title={product.name} active={product.reviewStatus}>
@@ -113,8 +118,8 @@ const isPublic = publicItem !== undefined;
 
         <div class="public-media">
           {
-            product.imageUrl ? (
-              <img src={product.imageUrl} alt={product.imageAlt ?? product.name} />
+            publicImageUrl ? (
+              <img src={publicImageUrl} alt={product.imageAlt ?? product.name} />
             ) : (
               <div class="image-placeholder" aria-hidden="true">
                 <svg viewBox="0 0 48 48" width="40" height="40" focusable="false">
@@ -204,6 +209,26 @@ const isPublic = publicItem !== undefined;
 
         <dl class="fieldlist" style="margin-bottom: var(--space-4)">
           <div><dt>Current status</dt><dd><StatusBadge status={product.reviewStatus} /></dd></div>
+          <div>
+            <dt>Stored image URL</dt>
+            <dd>
+              {
+                product.imageUrl === undefined ? (
+                  <span class="muted">None</span>
+                ) : (
+                  <>
+                    <code>{product.imageUrl.trim() === '' ? '(blank)' : product.imageUrl}</code>
+                    <br />
+                    <span class="muted">
+                      {publicImageUrl
+                        ? 'Valid: used as the public image.'
+                        : 'Not a valid http(s) URL: NOT used publicly. The placeholder image is shown.'}
+                    </span>
+                  </>
+                )
+              }
+            </dd>
+          </div>
           <div><dt>Created</dt><dd><time datetime={product.createdAt}>{formatDateTime(product.createdAt)}</time></dd></div>
           <div><dt>Last updated</dt><dd><time datetime={product.updatedAt}>{formatDateTime(product.updatedAt)}</time></dd></div>
           <div>

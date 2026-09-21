@@ -122,6 +122,10 @@ products and DIY all use it):
    none, the **cheapest** eligible offer (unknown price last). No eligible offer, not public.
 3. Its category resolves to a supported section (decorations or costumes).
 
+**Image URLs are validated too.** A product's image is public only if it is an `http(s)` URL; anything else
+(`javascript:`, `data:`, malformed, blank) is dropped from the public product and the placeholder image
+renders. An invalid image never hides an otherwise eligible product.
+
 **Hidden products are invisible.** A pending, rejected, ineligible, wrong-section or unknown
 slug all return the site's ordinary 404 page, byte-for-byte identical, so nothing reveals
 that a hidden product exists. Internal review notes and status are not selected by public
@@ -315,7 +319,7 @@ npm test              # run once, non-interactive
 npm run test:watch    # re-run on change while developing
 ```
 
-A small [Vitest](https://vitest.dev) suite (11 tests) that protects the **product visibility and
+A small [Vitest](https://vitest.dev) suite (14 tests) that protects the **product visibility and
 review rules**, the rules that keep unreviewed or unsafe products off the public site. It runs the
 real repositories, with nothing mocked.
 
@@ -324,7 +328,8 @@ public; an inactive retailer, a discontinued-only offer, or an unsafe (non-http/
 keeps a product hidden; review notes and admin fields never appear in public output; pending → approved
 makes a product public immediately, and approved → rejected/pending hides it; the primary eligible
 offer wins, else the cheapest eligible one; and the required category hierarchy exists on a freshly
-migrated database (no seed) with products resolving through it. Each "hidden" case includes an eligible control product, so
+migrated database (no seed) with products resolving through it; and only a safe `http(s)` image URL reaches
+a public product, while an invalid one is dropped without hiding the product. Each "hidden" case includes an eligible control product, so
 a broken fixture cannot pass by accident.
 
 **How it works:** each test file builds its own **in-memory D1** (Miniflare, the same engine as local D1)
