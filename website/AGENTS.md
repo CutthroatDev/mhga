@@ -46,6 +46,13 @@ folder structure.
   are public-safe. Use `toPublicImageUrl()` (`src/server/domain/image-url.ts`) in the public mappers only;
   never re-check schemes in pages/components, and never rewrite or proxy a URL. An invalid image degrades
   to "no image" (the placeholder renders); it must never hide an otherwise eligible product.
+- **Offer freshness is derived from `last_checked_at`** by the single policy in
+  `src/server/domain/offer-freshness.ts` (<= 7 days fresh, <= 30 days stale but usable, older or missing
+  expired and ineligible). **Do not duplicate freshness state in database columns**, do not repeat the
+  day thresholds or `Date.now()` arithmetic elsewhere, and keep the public SQL receiving the policy's
+  cutoff as a bound value. Time is injected (`now`) so tests are deterministic. Automated ingestion should
+  eventually **prioritize refreshing stale offers before they expire**, using `classifyOfferFreshness`.
+  Seed data must use timestamps relative to seed time, never fixed dates.
 - **Internal review notes must never enter public models.** The public `Product` type has no id,
   status, or notes; keep it that way. Never select `review_notes` in a public query.
 - **Do not bypass the boundaries.** Public pages import only from `src/data-access/`. The catalog

@@ -118,9 +118,28 @@ products and DIY all use it):
 
 1. `review_status = approved`.
 2. It has an **eligible offer**: the offer's retailer is active, the offer is not
-   `discontinued`, and its URL is `http(s)`. The **primary** eligible offer is used; if there is
-   none, the **cheapest** eligible offer (unknown price last). No eligible offer, not public.
+   `discontinued`, its URL is `http(s)`, and it is **not expired** (see *Offer freshness*). The
+   **primary** eligible offer is used; if there is none, the **cheapest** eligible offer (unknown
+   price last). No eligible offer, not public.
 3. Its category resolves to a supported section (decorations or costumes).
+
+**Offer freshness.** Old retailer/price information is not trusted forever. Freshness is *derived*
+from `product_offers.last_checked_at` (never stored in a column) by one policy,
+`src/server/domain/offer-freshness.ts`, in UTC whole seconds:
+
+| Age of `last_checked_at`         | State   | Public use                        |
+| -------------------------------- | ------- | --------------------------------- |
+| 0 to 7 days (7 days included)    | fresh   | eligible                          |
+| over 7 to 30 days (30 included)  | stale   | still eligible; due for a refresh |
+| over 30 days                     | expired | **not eligible**                  |
+| missing (`NULL`) or unparseable  | expired | **not eligible**                  |
+
+A missing timestamp is ineligible on purpose: once ingestion exists, an offer with no record of when it
+was verified cannot be trusted. Only canonical UTC timestamps (`YYYY-MM-DDTHH:MM:SSZ`) count. An expired
+primary offer falls back to the next eligible offer, and a product with no eligible offer is hidden.
+Freshness decides *eligibility* only; the choice among eligible offers (primary, else cheapest) is
+unchanged. Nothing about freshness is shown publicly. The public SQL contains no day counts: it receives a
+cutoff computed by the policy, so the thresholds live in exactly one place.
 
 **Image URLs are validated too.** A product's image is public only if it is an `http(s)` URL; anything else
 (`javascript:`, `data:`, malformed, blank) is dropped from the public product and the placeholder image
@@ -214,7 +233,10 @@ npm run db:migrations:list:local
 The seed (`seeds/local-dev.sql`) is placeholder **sample** data only: approved, pending and rejected
 products, two retailers, several offers, a published and a draft project, and ordered
 project-product links. It does **not** create categories: it looks them up by slug, so run
-`npm run db:migrate:local` first. It is re-runnable. There is deliberately **no remote seed script**.
+`npm run db:migrate:local` first. It is re-runnable. Its offers are timestamped **relative to the moment you
+run it** (1 to 15 days old), so they are fresh or stale-but-usable under the freshness policy; if the
+seeded catalog ever disappears after 30+ days, re-run `npm run db:seed:local`. There is deliberately **no
+remote seed script**.
 
 To reset the local database, delete the local state (this only removes local files):
 `rm -rf .wrangler/state`, then migrate and seed again.
@@ -319,13 +341,14 @@ npm test              # run once, non-interactive
 npm run test:watch    # re-run on change while developing
 ```
 
-A small [Vitest](https://vitest.dev) suite (14 tests) that protects the **product visibility and
+A small [Vitest](https://vitest.dev) suite (20 tests) that protects the **product visibility and
 review rules**, the rules that keep unreviewed or unsafe products off the public site. It runs the
 real repositories, with nothing mocked.
 
 **Covered:** pending and rejected products are hidden; an approved product with an eligible offer is
 public; an inactive retailer, a discontinued-only offer, or an unsafe (non-http/https) purchase URL
-keeps a product hidden; review notes and admin fields never appear in public output; pending → approved
+keeps a product hidden; the offer freshness policy (fresh, stale-but-usable, expired, missing timestamp,
+fallback from an expired primary, and the exact 7 and 30 day boundaries on a fixed clock); review notes and admin fields never appear in public output; pending → approved
 makes a product public immediately, and approved → rejected/pending hides it; the primary eligible
 offer wins, else the cheapest eligible one; and the required category hierarchy exists on a freshly
 migrated database (no seed) with products resolving through it; and only a safe `http(s)` image URL reaches

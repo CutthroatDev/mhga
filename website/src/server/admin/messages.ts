@@ -1,4 +1,5 @@
 import type { ProductReviewStatus } from '../../types';
+import { OFFER_USABLE_DAYS } from '../domain/offer-freshness';
 import { EDITABLE_FIELDS, FIELD_LABELS, type EditableField } from './validation';
 
 /**
@@ -9,7 +10,7 @@ import { EDITABLE_FIELDS, FIELD_LABELS, type EditableField } from './validation'
 const NOTICES = {
   approved: 'approved.',
   approved_hidden:
-    'approved, but it has no eligible offer, so it will not be listed publicly until one is added (an offer from an active retailer, with an http(s) link, that is not discontinued).',
+    `approved, but it has no eligible offer, so it will not be listed publicly until one is added (an offer from an active retailer, with an http(s) link, not discontinued, and checked within the last ${OFFER_USABLE_DAYS} days).`,
   rejected: 'rejected.',
   pending: 'moved back to pending.',
   notes_saved: 'internal notes saved.',

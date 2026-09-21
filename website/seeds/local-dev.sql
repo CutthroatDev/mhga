@@ -82,6 +82,13 @@ INSERT INTO products (
 
 -- ---------------------------------------------------------------------------
 -- Offers. Prices are integer cents.
+--
+-- last_checked_at is set RELATIVE TO THE MOMENT THE SEED RUNS, because the freshness policy
+-- (src/server/domain/offer-freshness.ts) makes offers older than 30 days, or never checked,
+-- ineligible for public use. Fixed dates would silently age out and hide the seeded catalog.
+-- The values are chosen to keep the local catalog usable and show both usable states:
+--   1-2 days  -> fresh          15 days -> stale but still public (refresh due)
+-- If seeded offers ever expire (30+ days), re-run: npm run db:seed:local
 -- ---------------------------------------------------------------------------
 INSERT INTO product_offers (
   id, product_id, retailer_id, retailer_product_id, product_url, affiliate_url,
@@ -89,15 +96,16 @@ INSERT INTO product_offers (
 ) VALUES
   -- Porch skeleton: preferred offer ($24.99) and a cheaper non-preferred one ($22.50).
   ('00000000-0000-4000-8000-00000000b001', '00000000-0000-4000-8000-00000000a001', '00000000-0000-4000-8000-00000000e001',
-   'EX-SKEL-1', 'https://example.com/sample-porch-skeleton', NULL, 2499, 'USD', 'in_stock', 1, '2026-01-01T00:00:00Z'),
+   'EX-SKEL-1', 'https://example.com/sample-porch-skeleton', NULL, 2499, 'USD', 'in_stock', 1, strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-1 days')),
   ('00000000-0000-4000-8000-00000000b002', '00000000-0000-4000-8000-00000000a001', '00000000-0000-4000-8000-00000000e002',
-   NULL, 'https://example.org/sample-porch-skeleton', NULL, 2250, 'USD', 'in_stock', 0, '2026-01-01T00:00:00Z'),
-  -- Witch hat: single offer ($12.50).
+   NULL, 'https://example.org/sample-porch-skeleton', NULL, 2250, 'USD', 'in_stock', 0, strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-2 days')),
+  -- Witch hat: single offer ($12.50), last checked 15 days ago: STALE but still public.
   ('00000000-0000-4000-8000-00000000b003', '00000000-0000-4000-8000-00000000a003', '00000000-0000-4000-8000-00000000e001',
-   NULL, 'https://example.com/sample-witch-hat', NULL, 1250, 'USD', 'in_stock', 1, '2026-01-01T00:00:00Z'),
+   NULL, 'https://example.com/sample-witch-hat', NULL, 1250, 'USD', 'in_stock', 1, strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-15 days')),
   -- Pending candle has an offer too, to prove an offer alone does not make a product public.
+  -- It is checked (fresh) so that approving it in the admin makes it public, as a real review would.
   ('00000000-0000-4000-8000-00000000b004', '00000000-0000-4000-8000-00000000a002', '00000000-0000-4000-8000-00000000e001',
-   NULL, 'https://example.com/sample-pending-candle', NULL, 999, 'USD', 'unknown', 1, NULL);
+   NULL, 'https://example.com/sample-pending-candle', NULL, 999, 'USD', 'unknown', 1, strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-1 days'));
 
 -- ---------------------------------------------------------------------------
 -- DIY projects: one published, one draft

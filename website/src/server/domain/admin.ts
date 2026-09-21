@@ -5,6 +5,7 @@
  */
 import type { ProductListItem, ProductReviewStatus } from '../../types';
 import type { AdminProduct, OfferAvailability } from './catalog';
+import type { OfferFreshness } from './offer-freshness';
 
 export type ProductStatusCounts = Record<ProductReviewStatus, number> & { total: number };
 
@@ -41,6 +42,8 @@ export interface AdminOfferView {
   availability: OfferAvailability;
   isPrimary: boolean;
   lastCheckedAt?: string;
+  /** Derived from lastCheckedAt by the freshness policy (never stored). 'expired' offers are not used publicly. */
+  freshness: OfferFreshness;
 }
 
 export interface CategoryOption {

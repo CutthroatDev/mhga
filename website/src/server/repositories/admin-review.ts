@@ -9,6 +9,7 @@ import type {
   ProductStatusCounts,
 } from '../domain/admin';
 import type { OfferAvailability } from '../domain/catalog';
+import { classifyOfferFreshness } from '../domain/offer-freshness';
 import type { CategoryRepository } from './categories';
 import type { AdminProductRepository } from './products';
 import type { PublicProductRepository } from './public-products';
@@ -81,6 +82,7 @@ export class AdminReviewRepository {
     private readonly categories: CategoryRepository,
     private readonly products: AdminProductRepository,
     private readonly publicProducts: PublicProductRepository,
+    private readonly now: () => Date = () => new Date(),
   ) {}
 
   async getStatusCounts(): Promise<ProductStatusCounts> {
@@ -162,6 +164,7 @@ export class AdminReviewRepository {
       currency: row.currency,
       availability: row.availability as OfferAvailability,
       isPrimary: toBoolean(row.is_primary),
+      freshness: classifyOfferFreshness(row.last_checked_at, this.now()),
       ...(row.retailer_product_id ? { retailerProductId: row.retailer_product_id } : {}),
       ...(row.price_cents !== null ? { priceCents: row.price_cents } : {}),
       ...(row.last_checked_at ? { lastCheckedAt: row.last_checked_at } : {}),

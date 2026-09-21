@@ -9,6 +9,10 @@
  *
  * Repositories are created fresh on every access, like a real request does, so nothing is
  * cached between calls.
+ *
+ * TIME IS FIXED. The repositories run on `CatalogWorld.NOW`, not the real clock, so freshness
+ * results never depend on today's date. Offer timestamps are always explicit: by default an
+ * offer was checked one day before NOW (fresh); pass `lastCheckedAt` (or null for "never").
  */
 import type { ProductReviewStatus } from '../../src/types';
 import type { OfferAvailability, ProductOffer, RetailerRecord, AdminProduct } from '../../src/server/domain/catalog';
@@ -16,6 +20,9 @@ import { createRepositories } from '../../src/server/repositories';
 import { createTestDatabase, type TestDatabase } from './test-db';
 
 export class CatalogWorld {
+  /** The reference "now" for every test (UTC). Arbitrary, but fixed. */
+  static readonly NOW = new Date('2026-06-15T12:00:00Z');
+
   private constructor(private readonly db: TestDatabase) {}
 
   static async create(): Promise<CatalogWorld> {
@@ -32,7 +39,16 @@ export class CatalogWorld {
   }
 
   get repos() {
-    return createRepositories(this.db.d1);
+    return createRepositories(this.db.d1, { now: () => CatalogWorld.NOW });
+  }
+
+  /**
+   * An ISO timestamp (whole seconds, UTC, `...Z`) that is `days` days plus `extraSeconds` before
+   * NOW. `isoAgo(30)` is exactly 30 days old; `isoAgo(30, 1)` is one second older than that.
+   */
+  isoAgo(days: number, extraSeconds = 0): string {
+    const milliseconds = CatalogWorld.NOW.getTime() - (days * 86_400 + extraSeconds) * 1000;
+    return new Date(milliseconds).toISOString().replace(/\.\d{3}Z$/, 'Z');
   }
 
   // ---- builders --------------------------------------------------------------------------
@@ -77,8 +93,16 @@ export class CatalogWorld {
   offer(
     product: AdminProduct,
     retailer: RetailerRecord,
-    options: { url?: string; priceCents?: number; availability?: OfferAvailability; primary?: boolean } = {},
+    options: {
+      url?: string;
+      priceCents?: number;
+      availability?: OfferAvailability;
+      primary?: boolean;
+      /** ISO timestamp; `null` means never checked (stored as NULL). Default: 1 day before NOW. */
+      lastCheckedAt?: string | null;
+    } = {},
   ): Promise<ProductOffer> {
+    const lastCheckedAt = options.lastCheckedAt === undefined ? this.isoAgo(1) : options.lastCheckedAt;
     return this.repos.offers.create({
       productId: product.id,
       retailerId: retailer.id,
@@ -86,6 +110,7 @@ export class CatalogWorld {
       priceCents: options.priceCents ?? 1000,
       availability: options.availability ?? 'in_stock',
       isPrimary: options.primary ?? false,
+      ...(lastCheckedAt === null ? {} : { lastCheckedAt }),
     });
   }
 

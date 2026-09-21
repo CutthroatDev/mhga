@@ -11,6 +11,7 @@ import StatusBadge from '@/admin/components/StatusBadge.astro';
 import { formatCents, formatDateTime } from '@/admin/format';
 import { localAdminDenied } from '@/server/admin/access';
 import { toPublicImageUrl } from '@/server/domain/image-url';
+import { OFFER_USABLE_DAYS } from '@/server/domain/offer-freshness';
 import { getRepositories } from '@/server/admin/context';
 import { safeReturnPath } from '@/server/admin/http';
 import { errorFieldLabels, isNoticeCode, noticeText } from '@/server/admin/messages';
@@ -103,7 +104,8 @@ const publicImageUrl = toPublicImageUrl(product.imageUrl);
         ) : (
           <span>
             <strong>Public now:</strong> no. It is approved but has no eligible offer (an offer from an active
-            retailer, with an http(s) link, that is not discontinued), or its category is not in a supported section.
+            retailer, with an http(s) link, not discontinued, and checked within the last {OFFER_USABLE_DAYS} days),
+            or its category is not in a supported section.
           </span>
         )
       }

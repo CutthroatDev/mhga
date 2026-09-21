@@ -1,26 +1,33 @@
 /**
  * THE single definition of what makes a product publicly visible, and what a public read
  * selects. Every public product read (lists, by-slug, related, DIY) goes through
- * `publicProductQuery()`, so list pages and direct slug access can never disagree.
+ * `buildPublicProductQuery()`, so list pages and direct slug access can never disagree.
  *
  * A product is public only when ALL of these hold:
  *
  *  1. review_status = 'approved'.
  *  2. It has an ELIGIBLE OFFER: the offer's retailer is active, the offer is not
- *     'discontinued', and its product_url is an http(s) URL (a public buy link must never
- *     be something like a javascript: URL). Among eligible offers the PRIMARY one is used;
- *     if there is no eligible primary, the cheapest eligible offer (unknown price last).
- *     A product with no eligible offer is not public.
+ *     'discontinued', its product_url is an http(s) URL (a public buy link must never be
+ *     something like a javascript: URL), and it is NOT EXPIRED: last_checked_at must be present
+ *     and no older than the usable window. The window is defined only in
+ *     domain/offer-freshness.ts; this query just receives its cutoff as a bound value and
+ *     contains no day counts. Among eligible offers the PRIMARY one is used; if there is no
+ *     eligible primary, the cheapest eligible offer (unknown price last). Freshness affects
+ *     eligibility only, never that choice. A product with no eligible offer is not public.
  *  3. Its category resolves to a supported public section (decorations | costumes). That
  *     check needs the category tree, so it lives in TypeScript: `CategoryIndex.resolve()`
  *     via `mapPublicProduct()`, which drops the product otherwise.
  *
- * What it selects: only public columns. review_notes, review_status, timestamps, and every
- * database id are never selected, so they cannot reach a public object.
+ * What it selects: only public columns. review_notes, review_status, timestamps (including
+ * last_checked_at), and every database id are never selected, so they cannot reach a public
+ * object.
  *
- * Callers add constant SQL fragments (`prefix`, `where`, `orderBy`) and bind any values.
- * Never build these fragments from user input.
+ * Callers add constant SQL fragments (`prefix`, `where`, `orderBy`) and pass their values
+ * separately. Never build these fragments from user input.
  */
+import { canonicalTimestampSql } from '../domain/offer-freshness';
+import type { SqlValue } from '../db/database';
+
 const SELECT_PUBLIC_PRODUCTS = `
 SELECT
   p.slug, p.name, p.summary, p.description, p.category_id,
@@ -38,6 +45,8 @@ JOIN product_offers o ON o.id = (
   WHERE o2.product_id = p.id
     AND o2.availability <> 'discontinued'
     AND (o2.product_url LIKE 'https://%' OR o2.product_url LIKE 'http://%')
+    AND ${canonicalTimestampSql('o2.last_checked_at')}
+    AND CAST(strftime('%s', o2.last_checked_at) AS INTEGER) >= ?
   ORDER BY o2.is_primary DESC, o2.price_cents IS NULL, o2.price_cents ASC, o2.id ASC
   LIMIT 1
 )
@@ -48,18 +57,40 @@ WHERE p.review_status = 'approved'`;
 const DEFAULT_ORDER = 'p.created_at DESC, p.id ASC';
 
 export interface PublicProductQueryParts {
-  /** Optional leading WITH clause (constant SQL). */
+  /** Oldest usable `last_checked_at`, in epoch seconds: `oldestUsableCheckSeconds(now)`. */
+  offerCutoffSeconds: number;
+  /** Optional leading WITH clause (constant SQL) and the values of its `?` placeholders. */
   prefix?: string;
-  /** Extra conditions, each starting with AND (constant SQL, using ? placeholders). */
+  prefixValues?: SqlValue[];
+  /** Extra conditions, each starting with AND (constant SQL) and their values. */
   where?: string;
+  whereValues?: SqlValue[];
   orderBy?: string;
+  orderValues?: SqlValue[];
 }
 
-export function publicProductQuery({ prefix = '', where = '', orderBy = DEFAULT_ORDER }: PublicProductQueryParts = {}): string {
-  return `${prefix}${SELECT_PUBLIC_PRODUCTS}${where ? `\n${where}` : ''}\nORDER BY ${orderBy}`;
+/**
+ * Assembles the SQL and its bound values together. Positional `?` placeholders bind in the
+ * order they appear in the text: prefix, then the offer freshness cutoff (inside the offer
+ * subquery), then the WHERE additions, then ORDER BY. Building both here keeps that order in
+ * one place.
+ */
+export function buildPublicProductQuery({
+  offerCutoffSeconds,
+  prefix = '',
+  prefixValues = [],
+  where = '',
+  whereValues = [],
+  orderBy = DEFAULT_ORDER,
+  orderValues = [],
+}: PublicProductQueryParts): { sql: string; values: SqlValue[] } {
+  return {
+    sql: `${prefix}${SELECT_PUBLIC_PRODUCTS}${where ? `\n${where}` : ''}\nORDER BY ${orderBy}`,
+    values: [...prefixValues, offerCutoffSeconds, ...whereValues, ...orderValues],
+  };
 }
 
-/** Category and all of its descendants, by slug. Bind the slug as ?1 in the tree CTE. */
+/** Category and all of its descendants, by slug. Its one `?` is the category slug. */
 export const CATEGORY_TREE_BY_SLUG = `
 WITH RECURSIVE tree(id) AS (
   SELECT id FROM categories WHERE slug = ?

@@ -2,6 +2,14 @@
 // Read-only view of a product's retailer offers. (No affiliate data is shown or editable.)
 import type { AdminOfferView } from '@/server/domain/admin';
 import { AVAILABILITY_LABELS, formatCents, formatDate } from '@/admin/format';
+import { OFFER_FRESH_DAYS, OFFER_USABLE_DAYS } from '@/server/domain/offer-freshness';
+
+// Wording for the derived freshness (the policy itself lives in domain/offer-freshness.ts).
+const FRESHNESS_LABELS = {
+  fresh: `Fresh (checked within ${OFFER_FRESH_DAYS} days)`,
+  stale: `Stale: refresh due (used publicly until ${OFFER_USABLE_DAYS} days)`,
+  expired: `Expired: not used publicly (older than ${OFFER_USABLE_DAYS} days)`,
+} as const;
 
 interface Props {
   offers: AdminOfferView[];
@@ -13,7 +21,7 @@ const { offers } = Astro.props;
 <div class="table-wrap offers">
   {
     offers.length === 0 ? (
-      <p class="empty-queue">No offers yet. A product needs an eligible offer (active retailer, http(s) link, not discontinued) to be public.</p>
+      <p class="empty-queue">No offers yet. A product needs an eligible offer (active retailer, http(s) link, not discontinued, checked within the last {OFFER_USABLE_DAYS} days) to be public.</p>
     ) : (
       <table class="queue">
         <thead>
@@ -45,7 +53,13 @@ const { offers } = Astro.props;
               <td data-label="Preferred">
                 {offer.isPrimary ? <span class="tag tag--primary">Primary</span> : <span class="muted">No</span>}
               </td>
-              <td class="num" data-label="Last checked">{formatDate(offer.lastCheckedAt)}</td>
+              <td class="num" data-label="Last checked">
+                {offer.lastCheckedAt ? formatDate(offer.lastCheckedAt) : 'Never'}
+                <br />
+                <small class="muted">
+                  {offer.lastCheckedAt ? FRESHNESS_LABELS[offer.freshness] : `Never checked: not used publicly`}
+                </small>
+              </td>
             </tr>
           ))}
         </tbody>

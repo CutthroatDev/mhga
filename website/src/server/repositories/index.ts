@@ -17,15 +17,20 @@ export { PublicProductRepository } from './public-products';
 export type { PublicProductQuery } from './public-products';
 export { RetailerRepository } from './retailers';
 
+/** Options shared by the factories. `now` is the clock used for offer freshness (default: real time). */
+export interface RepositoryOptions {
+  now?: () => Date;
+}
+
 /**
  * Public-only repositories, for the public site's data-access layer (src/data-access/).
  * Deliberately excludes every admin/internal repository, so public code has no way to reach
  * review notes, pending or rejected products, or any write operation.
  */
-export function createPublicRepositories(d1: D1Database) {
+export function createPublicRepositories(d1: D1Database, options: RepositoryOptions = {}) {
   const db = new Database(d1);
   const categories = new CategoryRepository(db);
-  return { products: new PublicProductRepository(db, categories) };
+  return { products: new PublicProductRepository(db, categories, options.now) };
 }
 
 export type PublicRepositories = ReturnType<typeof createPublicRepositories>;
@@ -37,10 +42,10 @@ export type PublicRepositories = ReturnType<typeof createPublicRepositories>;
  * "public*" repositories return approved/published data only. Everything else is for
  * trusted server code and must never feed a public page.
  */
-export function createRepositories(d1: D1Database) {
+export function createRepositories(d1: D1Database, options: RepositoryOptions = {}) {
   const db = new Database(d1);
   const categories = new CategoryRepository(db);
-  const publicProducts = new PublicProductRepository(db, categories);
+  const publicProducts = new PublicProductRepository(db, categories, options.now);
   const adminProducts = new AdminProductRepository(db);
 
   return {
@@ -48,7 +53,7 @@ export function createRepositories(d1: D1Database) {
     publicProducts,
     publicDIYProjects: new DIYProjectRepository(db, publicProducts),
     adminProducts,
-    adminReview: new AdminReviewRepository(db, categories, adminProducts, publicProducts),
+    adminReview: new AdminReviewRepository(db, categories, adminProducts, publicProducts, options.now),
     retailers: new RetailerRepository(db),
     offers: new OfferRepository(db),
   };

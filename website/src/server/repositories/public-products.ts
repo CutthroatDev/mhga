@@ -1,9 +1,10 @@
 import type { ProductCategory, ProductListItem, ProductSection } from '../../types';
 import type { Database } from '../db/database';
 import type { PublicProductRow } from '../db/rows';
+import { oldestUsableCheckSeconds } from '../domain/offer-freshness';
 import type { CategoryRepository } from './categories';
 import { mapPublicProduct } from './mappers';
-import { CATEGORY_TREE_BY_SLUG, publicProductQuery } from './public-product-query';
+import { CATEGORY_TREE_BY_SLUG, buildPublicProductQuery } from './public-product-query';
 
 export interface PublicProductQuery {
   section?: ProductSection;
@@ -22,6 +23,9 @@ export interface PublicProductQuery {
  * equally hidden from direct access: a pending, rejected, ineligible or unknown slug all
  * return `undefined`, indistinguishably.
  *
+ * Offers must also be fresh enough (domain/offer-freshness.ts). "Now" comes from the injected
+ * clock, so tests (and any future caller) control time; the default is the real clock.
+ *
  * Query cost per call: one product query, plus the (small) category tree, which is loaded
  * once per repository instance. No per-product queries. Create the repository per request.
  */
@@ -29,7 +33,13 @@ export class PublicProductRepository {
   constructor(
     private readonly db: Database,
     private readonly categories: CategoryRepository,
+    private readonly now: () => Date = () => new Date(),
   ) {}
+
+  /** The freshness cutoff bound into every public query, from the policy and the clock. */
+  private offerCutoffSeconds(): number {
+    return oldestUsableCheckSeconds(this.now());
+  }
 
   /**
    * Eligible products, optionally narrowed to a section and/or category (including its
@@ -38,13 +48,17 @@ export class PublicProductRepository {
   async getApprovedProducts(query: PublicProductQuery = {}): Promise<ProductListItem[]> {
     // A category and its descendants; a section is just its root category.
     const treeSlug = query.categorySlug ?? query.section;
-    const sql = treeSlug
-      ? publicProductQuery({
-          prefix: CATEGORY_TREE_BY_SLUG,
-          where: 'AND p.category_id IN (SELECT id FROM tree)',
-        })
-      : publicProductQuery();
-    const rows = await this.db.all<PublicProductRow>(sql, ...(treeSlug ? [treeSlug] : []));
+    const { sql, values } = buildPublicProductQuery({
+      offerCutoffSeconds: this.offerCutoffSeconds(),
+      ...(treeSlug
+        ? {
+            prefix: CATEGORY_TREE_BY_SLUG,
+            prefixValues: [treeSlug],
+            where: 'AND p.category_id IN (SELECT id FROM tree)',
+          }
+        : {}),
+    });
+    const rows = await this.db.all<PublicProductRow>(sql, ...values);
 
     const items = await this.toItems(rows);
     const inSection = query.section ? items.filter((item) => item.product.section === query.section) : items;
@@ -58,10 +72,12 @@ export class PublicProductRepository {
 
   /** Slugs are unique across the site, so no section is needed. */
   async getApprovedProductBySlug(slug: string): Promise<ProductListItem | undefined> {
-    const rows = await this.db.all<PublicProductRow>(
-      publicProductQuery({ where: 'AND p.slug = ?' }),
-      slug,
-    );
+    const { sql, values } = buildPublicProductQuery({
+      offerCutoffSeconds: this.offerCutoffSeconds(),
+      where: 'AND p.slug = ?',
+      whereValues: [slug],
+    });
+    const rows = await this.db.all<PublicProductRow>(sql, ...values);
     return (await this.toItems(rows))[0];
   }
 
@@ -72,10 +88,12 @@ export class PublicProductRepository {
   async getApprovedProductsBySlugs(slugs: string[]): Promise<ProductListItem[]> {
     if (slugs.length === 0) return [];
     // One bound JSON parameter instead of a variable-length IN (...) list.
-    const rows = await this.db.all<PublicProductRow>(
-      publicProductQuery({ where: 'AND p.slug IN (SELECT value FROM json_each(?))' }),
-      JSON.stringify(slugs),
-    );
+    const { sql, values } = buildPublicProductQuery({
+      offerCutoffSeconds: this.offerCutoffSeconds(),
+      where: 'AND p.slug IN (SELECT value FROM json_each(?))',
+      whereValues: [JSON.stringify(slugs)],
+    });
+    const rows = await this.db.all<PublicProductRow>(sql, ...values);
     const items = await this.toItems(rows);
     return items.sort((a, b) => slugs.indexOf(a.product.slug) - slugs.indexOf(b.product.slug));
   }
@@ -109,15 +127,15 @@ export class PublicProductRepository {
 
   /** Eligible products used by a D1 DIY project, in the project's deliberate order. */
   async getApprovedProductsForProject(projectId: string): Promise<ProductListItem[]> {
-    const rows = await this.db.all<PublicProductRow>(
-      publicProductQuery({
-        where: 'AND p.id IN (SELECT product_id FROM diy_project_products WHERE project_id = ?)',
-        orderBy:
-          '(SELECT l.sort_order FROM diy_project_products l WHERE l.project_id = ? AND l.product_id = p.id) ASC, p.id ASC',
-      }),
-      projectId,
-      projectId,
-    );
+    const { sql, values } = buildPublicProductQuery({
+      offerCutoffSeconds: this.offerCutoffSeconds(),
+      where: 'AND p.id IN (SELECT product_id FROM diy_project_products WHERE project_id = ?)',
+      whereValues: [projectId],
+      orderBy:
+        '(SELECT l.sort_order FROM diy_project_products l WHERE l.project_id = ? AND l.product_id = p.id) ASC, p.id ASC',
+      orderValues: [projectId],
+    });
+    const rows = await this.db.all<PublicProductRow>(sql, ...values);
     return this.toItems(rows);
   }
 
