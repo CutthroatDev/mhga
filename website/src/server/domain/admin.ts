@@ -42,6 +42,10 @@ export interface AdminOfferView {
   availability: OfferAvailability;
   isPrimary: boolean;
   lastCheckedAt?: string;
+  /** Set when the offer came from automated ingestion: the source that last observed it. Read-only. */
+  sourceId?: string;
+  /** The retailer's own title at that observation. May differ from the curated product name. Read-only. */
+  sourceTitle?: string;
   /** Derived from lastCheckedAt by the freshness policy (never stored). 'expired' offers are not used publicly. */
   freshness: OfferFreshness;
 }

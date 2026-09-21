@@ -14,8 +14,10 @@ offer. DIY project content is still static (see *Public catalog*).
 - Database: **Cloudflare D1** (direct SQL, no ORM)
 - Deployment: **Cloudflare** Worker + static assets, configured in `wrangler.jsonc`
 
-No PHP, ORM, scraping, or affiliate integration exists. There is **no production authentication**:
-the review admin (see *Admin*) is local-development only and is disabled in every production build.
+No PHP, ORM, or affiliate integration exists, and there are **no real retailer connectors yet** (the
+ingestion *engine* exists and is proven with a fictional fixture source; see *Product ingestion*). There is
+**no production authentication**: the review admin (see *Admin*) is local-development only and is disabled
+in every production build.
 
 ## Getting started
 
@@ -173,6 +175,8 @@ repository classes. No ORM, no other database.
 - **Schema:** `migrations/0001_initial_schema.sql`. Tables: `categories`, `products`,
   `retailers`, `product_offers`, `diy_projects`, `diy_project_products`. IDs are
   app-generated UUID text; URLs use slugs; money is integer cents; timestamps are ISO 8601 UTC.
+  `migrations/0003_ingestion.sql` adds `ingestion_runs` and two provenance columns on `product_offers`
+  (see *Product ingestion*).
 - **Required categories are created by migrations**, not by the seed. `migrations/0002_bootstrap_categories.sql`
   inserts the structural hierarchy the public catalog depends on: **Decorations** (`decorations`) with
   **Outdoor Decorations** (`outdoor`) and **Indoor Decorations** (`indoor`) beneath it, and **Costumes**
@@ -201,9 +205,11 @@ src/server/                 Server-only code. Public pages/components must never
     products.ts             ADMIN: pending queue, create (always pending), update, review status
     admin-review.ts         ADMIN read models: status counts, queues, a product's review detail
     retailers.ts, offers.ts ADMIN: create/update retailers and offers
+    ingestion.ts            INGESTION writes: pending product + offer (atomic), offer refresh, run tracking
     categories.ts           Category tree
     mappers.ts              Rows -> domain objects (the only row<->domain translation)
   admin/                    Local-only admin logic: access guard, validation, HTTP helpers, messages
+  ingestion/                Product ingestion engine, connector interface, fixture connector (see below)
 ```
 
 Public reads return the existing public types (`Product`, `ProductListItem`, `DIYProject`
@@ -228,6 +234,7 @@ npm run db:seed:local      # load placeholder test data into the LOCAL database
 npm run dev                # http://localhost:4321  ->  /api/health
 npm run db:query:local -- "SELECT slug, review_status FROM products"
 npm run db:migrations:list:local
+npm run ingest:local -- --source fixture   # run the fixture ingestion against the LOCAL database
 ```
 
 The seed (`seeds/local-dev.sql`) is placeholder **sample** data only: approved, pending and rejected
@@ -272,6 +279,116 @@ Migration `0002` adds the required categories (structural reference data), so ap
 to a fresh production database is enough for them to exist. Sample data (products, retailers, offers)
 is never part of a migration: the seed is local-only.
 
+## Product ingestion
+
+The **ingestion engine** turns structured retailer listings into *pending* products and keeps their offers
+fresh. It is an internal, local-only tool: nothing exposes it over HTTP, and **no real retailer connector
+exists yet**. The only source is a fictional **fixture** that proves the engine end to end.
+
+```
+connector (per retailer)            engine (retailer-agnostic)
+fetchItems()  -> raw items
+toCandidate() -> CandidateInput  -> validate -> identity -> D1 write
+                                                (new) pending product + offer, atomically
+                                                (known) refresh the OFFER only
+```
+
+Human review in `/admin` stays the only gate: **pending -> approve -> public**.
+
+### Architecture (`src/server/ingestion/`, `src/server/repositories/ingestion.ts`)
+
+| File                      | Role                                                                                       |
+| ------------------------- | ------------------------------------------------------------------------------------------ |
+| `source.ts`               | `ProductIngestionSource`: the connector contract (`id`, `retailer`, `fetchItems`, `toCandidate`) |
+| `candidate.ts`            | `CandidateInput` (untrusted, from a connector) -> `validateCandidate` -> `IngestionCandidate` |
+| `engine.ts`               | `runIngestion(d1, source)`: dedupe, identity, create/refresh, run tracking, result         |
+| `category-mapping.ts`     | Supported categories (`outdoor`, `indoor`, `costumes`) and an exact-match mapper factory   |
+| `url.ts`, `price.ts`      | Conservative retailer-URL normalization; text/dollars -> integer cents                     |
+| `sources/fixture.ts`      | The controlled fixture connector (fictional feed, two snapshots)                            |
+| `local-cli.ts`            | Logic behind `npm run ingest:local`                                                        |
+| `repositories/ingestion.ts` | All ingestion SQL. New products are `pending` via a SQL literal; refresh never writes `products` |
+
+**Connector model.** A connector owns *acquisition and normalization only*: fetch raw items (API, feed,
+JSON, HTML, CSV), and reduce each to a `CandidateInput` (prices to integer cents, the retailer's category to
+one of the supported slugs, stock wording to `in_stock | out_of_stock | unknown`, `discontinued: true` only
+when the source itself says so). It never writes to the database, decides review status, or invents
+categories. A new retailer is a new file implementing `ProductIngestionSource`; the engine is not edited.
+Everything a connector returns is treated as untrusted and re-validated by the engine.
+
+**The candidate.** Required: `name`, `url` (http(s) only, normalized). Optional: `externalId`, `category`,
+`externalCategory`, `description`, `imageUrl`, `priceCents` (+ `currency`, required with a price),
+`availability`, `discontinued`, `observedAt`. An unsafe URL invalidates the candidate; an unsafe image URL
+is just dropped (the product is still created). A future `observedAt` is clamped to now.
+
+### Run it locally (fixture)
+
+```sh
+npm run db:migrate:local                             # once; applies 0003
+npm run db:seed:local                                # optional sample data
+npm run ingest:local -- --source fixture             # first feed: 3 pending products, 3 skipped
+npm run ingest:local -- --source fixture             # again: nothing created, offers re-verified
+npm run ingest:local -- --source fixture --snapshot updated   # price/title/availability changes, a new listing
+npm run dev                                          # new products appear in /admin/products/pending
+```
+
+`ingest:local` runs against the **local D1 only** (`.wrangler/state`, the same database `npm run dev` uses).
+The launcher opens it through Wrangler's local proxy with remote bindings off, and any unrecognised argument
+(including `--remote`) is refused. There is deliberately **no** `npm run ingest`, no remote variant, no
+HTTP endpoint, and no scheduled job. Those need production authentication and deployment decisions first.
+The fixture creates a `fixture-retailer` retailer and a few clearly fictional products in your local database.
+
+### Rules
+
+- **New products always start `pending`.** There is no auto-approve option of any kind.
+- **Existing products keep their review status.** Re-ingesting never resets, approves, or rejects.
+- **Identity is strong, never fuzzy.** A listing is *retailer + external listing id*, else *retailer + exact
+  normalized URL*. Titles are never compared and products are never merged across retailers: a duplicate
+  pending product is cheap to merge later, a false merge is not. An id/URL disagreement is reported as a
+  `conflict` and nothing is changed. The database enforces the same identity (`UNIQUE (retailer_id,
+  retailer_product_id)` and `UNIQUE (retailer_id, product_url)`), so a repeat can never insert a duplicate.
+- **Idempotent.** The same feed again creates nothing; it only refreshes `last_checked_at`. A feed that
+  repeats a listing is deduplicated (first occurrence wins) and reported.
+- **A missing listing is not a discontinued listing.** Unseen offers are never touched (an outage or parser
+  bug must not delist products); the freshness policy ages them out. Only an explicit `discontinued: true`
+  from the source marks one. A source that cannot be read fails the run and changes nothing.
+- **Atomic.** A new product and its offer are written in one D1 batch (one transaction), never one without the other.
+- **A bad candidate never aborts the run.** It is skipped and reported (`invalid`, `unmapped`, `duplicate`,
+  `conflict`, or `failed`), and the run finishes `partial`.
+- **Categories are never created by ingestion.** A new listing whose category cannot be mapped to an existing
+  supported category creates nothing and is reported as `unmapped`. (A *known* listing still refreshes: category
+  is curator-owned.)
+
+### What ingestion may and may not change
+
+| Source-owned: refreshed on every observation (offer only) | Curator-owned: never overwritten on an existing product |
+| --------------------------------------------------------- | -------------------------------------------------------- |
+| price (integer cents), currency, availability, discontinued | `review_status`, `reviewed_at`, internal `review_notes`  |
+| retailer listing URL (when it safely changes), listing id (only filled in, never replaced) | name, summary, description, category, slug |
+| `last_checked_at` (the observation time, canonical UTC)   | badges, details, quality notes, image and alt text       |
+| the retailer's own title (`source_title`) and `source_id`, internal | `is_primary`, `affiliate_url`                     |
+
+Source data only *seeds* a **new** pending product (name and image from the listing, a short summary from its
+description or its title, category from the mapping); the reviewer is expected to rewrite it. A retailer
+renaming a listing updates only the offer's `source_title`, which the admin shows read-only next to the curated name.
+
+### Tracking and schema (migration `0003_ingestion.sql`)
+
+- `ingestion_runs`: one row per run: source, start/finish, status (`running | succeeded | partial | failed`),
+  counts (discovered, products created, offers created/updated/unchanged, skipped, failed), and a bounded JSON
+  list of the first problems (engine-written text only: never raw SQL errors or retailer payloads).
+- `product_offers.source_id` and `.source_title`: provenance. Internal: no public query selects them.
+- Nothing else is stored: no raw payloads, HTML, or per-candidate history.
+
+### Adding a real retailer connector (later)
+
+Implement `ProductIngestionSource` in `src/server/ingestion/sources/`, register it in `local-cli.ts`, and add
+its category table with `createCategoryMapper`. Do not edit `engine.ts` or `repositories/ingestion.ts`. See
+*Not built yet* below for what must exist before the first one.
+
+**Not built yet:** real retailer connectors; a remote/production run path, scheduling (Cron Triggers), and the
+authentication they need; prioritising *stale* offers for refresh before they expire (`classifyOfferFreshness`
+already labels them); manual merge/reconciliation of duplicate products; a review-queue view of skipped candidates.
+
 ## Admin (local development only)
 
 A product review interface: see products awaiting review, inspect public vs. internal
@@ -307,7 +424,8 @@ other hostname is refused, so `astro dev --host` does not expose it. Re-run
 
 Approving a product makes it appear on the public site **immediately** (no build or restart),
 provided it has an eligible offer; returning it to pending or rejecting it removes it
-immediately. Offers are shown read-only. Affiliate links are not implemented.
+immediately. Offers are shown read-only (an offer created by ingestion also shows its source and the retailer's own
+title, kept separate from the curated name). Affiliate links are not implemented.
 
 ### How the temporary production lockout works
 
@@ -341,9 +459,9 @@ npm test              # run once, non-interactive
 npm run test:watch    # re-run on change while developing
 ```
 
-A small [Vitest](https://vitest.dev) suite (20 tests) that protects the **product visibility and
-review rules**, the rules that keep unreviewed or unsafe products off the public site. It runs the
-real repositories, with nothing mocked.
+A small [Vitest](https://vitest.dev) suite (50 tests) that protects the **product visibility and
+review rules** (the rules that keep unreviewed or unsafe products off the public site) and the
+**ingestion engine's business rules**. It runs the real repositories and engine, with nothing mocked.
 
 **Covered:** pending and rejected products are hidden; an approved product with an eligible offer is
 public; an inactive retailer, a discontinued-only offer, or an unsafe (non-http/https) purchase URL
@@ -354,6 +472,14 @@ offer wins, else the cheapest eligible one; and the required category hierarchy 
 migrated database (no seed) with products resolving through it; and only a safe `http(s)` image URL reaches
 a public product, while an invalid one is dropped without hiding the product. Each "hidden" case includes an eligible control product, so
 a broken fixture cannot pass by accident.
+
+**Ingestion coverage:** new listings become one pending product and one offer (not public until approved); repeat
+runs create no duplicates; identity by listing id, then exact URL, with no cross-retailer or title merging; price
+changes and `last_checked_at` refresh (never backwards); review status and every reviewer-owned field survive
+re-ingestion (approved stays public, rejected stays hidden); invalid, unsafe, unmapped and repeated candidates are
+skipped without stopping the run; a missing listing or an unreadable source never marks anything discontinued;
+product + offer creation is atomic; run tracking; and the fixture connector end to end (ingest, approve, refresh,
+curated data preserved).
 
 **How it works:** each test file builds its own **in-memory D1** (Miniflare, the same engine as local D1)
 from the real `migrations/*.sql`, so a schema change that breaks the repositories fails the tests. It
@@ -370,6 +496,7 @@ generic framework or SQL-constraint behavior. Check those manually.
 migrations/             D1 migrations (committed; the schema history)
 tests/                  Focused business-rule tests (Vitest) and their helpers
 seeds/                  LOCAL-only placeholder seed data
+scripts/                LOCAL tooling launchers (ingest-local.mjs)
 public/                 Static files served as-is (favicon, .assetsignore)
 worker-configuration.d.ts   Generated Cloudflare binding types (committed)
 src/

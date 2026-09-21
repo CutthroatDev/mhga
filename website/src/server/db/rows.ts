@@ -95,3 +95,34 @@ export interface DIYProjectRow {
   image_alt: string | null;
   status: string;
 }
+
+/** An offer as ingestion sees it: the identity and source-owned columns, including provenance. */
+export interface IngestionOfferRow {
+  id: string;
+  product_id: string;
+  retailer_product_id: string | null;
+  product_url: string;
+  price_cents: number | null;
+  currency: string;
+  availability: string;
+  last_checked_at: string | null;
+  source_id: string | null;
+  source_title: string | null;
+}
+
+export interface IngestionRunRow {
+  id: string;
+  source_id: string;
+  status: string;
+  started_at: string;
+  finished_at: string | null;
+  candidates_discovered: number;
+  products_created: number;
+  offers_created: number;
+  offers_updated: number;
+  offers_unchanged: number;
+  candidates_skipped: number;
+  candidates_failed: number;
+  error_count: number;
+  errors_json: string | null;
+}

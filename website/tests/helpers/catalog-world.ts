@@ -42,6 +42,17 @@ export class CatalogWorld {
     return createRepositories(this.db.d1, { now: () => CatalogWorld.NOW });
   }
 
+  /** The raw D1 binding, for code that takes one (the ingestion engine) and for row counts. */
+  get d1() {
+    return this.db.d1;
+  }
+
+  /** How many rows a table has. `table` is a literal written in a test, never external input. */
+  async count(table: 'products' | 'product_offers' | 'retailers' | 'categories' | 'ingestion_runs'): Promise<number> {
+    const row = await this.db.d1.prepare(`SELECT COUNT(*) AS n FROM ${table}`).first<{ n: number }>();
+    return row?.n ?? 0;
+  }
+
   /**
    * An ISO timestamp (whole seconds, UTC, `...Z`) that is `days` days plus `extraSeconds` before
    * NOW. `isoAgo(30)` is exactly 30 days old; `isoAgo(30, 1)` is one second older than that.

@@ -63,6 +63,34 @@ folder structure.
 - Related products of any static content (DIY) are referenced by slug and resolved through the
   public catalog, never copied.
 
+## Product ingestion
+
+- **Ingestion never auto-approves.** New products are created `pending` (a SQL literal in
+  `src/server/repositories/ingestion.ts`). Do not add any `autoApprove`, `trustedSource`, `approveAll`,
+  `bypassReview`, or similar option, parameter, or column.
+- **Ingestion never overwrites an existing product's review status.** Re-observing a listing writes to
+  `product_offers` only, never to `products`.
+- **Reviewer-owned canonical fields are not blindly overwritten** (name, summary, description, category, slug,
+  badges, details, quality notes, image, review notes). Source data only seeds a NEW pending product. A retailer's
+  own title is kept as `product_offers.source_title`, separate from the curated name.
+- **Offer facts may be refreshed automatically:** price, currency, availability, discontinued, listing URL,
+  listing id (only filled in, never replaced), and `last_checked_at`. Never touch `is_primary` or `affiliate_url`.
+- **Use strong source identity, not fuzzy matching:** retailer + external listing id, else retailer + exact
+  normalized URL. Never match by title or similarity, and never merge products across retailers automatically.
+  Keep the DB unique constraints; an identity disagreement is a reported conflict, not a guess.
+- **Do not mark a listing discontinued because it was missing from a run.** Only an explicit `discontinued: true`
+  from the source does. A failed fetch fails the run and changes nothing. Freshness ages unverified offers out.
+- **Do not expose unauthenticated ingestion HTTP routes.** Ingestion runs only through `npm run ingest:local`,
+  which reaches the LOCAL D1 only. Do not add `npm run ingest`, a remote ingest script, `--remote` support,
+  or Cron Triggers until production authentication and deployment are decided deliberately.
+- **Retailer-specific acquisition belongs in connectors** (`src/server/ingestion/sources/`, implementing
+  `ProductIngestionSource`), not in the ingestion core. Connectors do not touch the database, review status,
+  or categories. Category mapping goes through `category-mapping.ts` to existing categories only; ingestion
+  never creates category rows. Candidates carry integer cents, and unsafe URLs are rejected (use
+  `toSafeHttpUrl` / `toPublicImageUrl`; do not re-implement URL checks).
+- Ingestion code lives in `src/server/ingestion/` and must not be imported by public pages/components.
+  Changing an ingestion rule means changing `tests/ingestion.test.ts` with it; never weaken a test to pass.
+
 ## Admin security (temporary rule)
 
 - **Admin functionality is local-only until Cloudflare Access is configured.** There is no
@@ -109,7 +137,7 @@ folder structure.
   `public-product-query.ts` and do not select it.
 - Keep ingestion, review, and public presentation separate. Do not expose HTTP endpoints that
   create/approve/reject products or edit retailers, offers, or projects until authentication
-  exists.
+  exists (see *Product ingestion* above).
 - Astro 5 + `@astrojs/cloudflare` v12: reach bindings via `Astro.locals.runtime.env`. Do not use
   Astro 6 APIs (e.g. `import { env } from 'cloudflare:workers'`). Keep pages prerendered; use
   `export const prerender = false` only for routes that truly need the Worker.

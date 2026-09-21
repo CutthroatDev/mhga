@@ -41,6 +41,12 @@ const { offers } = Astro.props;
               <td class="name" data-label="Retailer">
                 <strong>{offer.retailerName}</strong>
                 {!offer.retailerIsActive && <small>Inactive retailer: not used publicly</small>}
+                {offer.sourceId && (
+                  <small class="muted">
+                    Ingested from <code>{offer.sourceId}</code>
+                    {offer.sourceTitle && <> · retailer title: “{offer.sourceTitle}”</>}
+                  </small>
+                )}
               </td>
               <td class="url" data-label="URL">
                 <a href={offer.productUrl} target="_blank" rel="noopener noreferrer">

@@ -3,6 +3,7 @@ import { Database } from '../db/database';
 import { AdminReviewRepository } from './admin-review';
 import { CategoryRepository } from './categories';
 import { DIYProjectRepository } from './diy-projects';
+import { IngestionRepository, IngestionRunRepository } from './ingestion';
 import { OfferRepository } from './offers';
 import { AdminProductRepository } from './products';
 import { PublicProductRepository } from './public-products';
@@ -11,6 +12,7 @@ import { RetailerRepository } from './retailers';
 export { AdminReviewRepository } from './admin-review';
 export { CategoryRepository } from './categories';
 export { DIYProjectRepository } from './diy-projects';
+export { IngestionRepository, IngestionRunRepository } from './ingestion';
 export { OfferRepository } from './offers';
 export { AdminProductRepository, isReviewStatus } from './products';
 export { PublicProductRepository } from './public-products';
@@ -60,3 +62,19 @@ export function createRepositories(d1: D1Database, options: RepositoryOptions = 
 }
 
 export type Repositories = ReturnType<typeof createRepositories>;
+
+/**
+ * What the ingestion engine needs, and nothing else. Deliberately separate from both factories
+ * above: the public factory must never reach ingestion writes, and the admin's
+ * `createRepositories` has no business writing ingested data either.
+ */
+export function createIngestionRepositories(d1: D1Database) {
+  const db = new Database(d1);
+  return {
+    categories: new CategoryRepository(db),
+    ingestion: new IngestionRepository(db),
+    runs: new IngestionRunRepository(db),
+  };
+}
+
+export type IngestionRepositories = ReturnType<typeof createIngestionRepositories>;

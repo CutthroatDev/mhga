@@ -3,9 +3,14 @@ export function newId(): string {
   return crypto.randomUUID();
 }
 
+/** A moment as canonical ISO 8601 UTC without milliseconds (`YYYY-MM-DDTHH:MM:SSZ`), matching the column defaults. */
+export function toIso(moment: Date): string {
+  return moment.toISOString().replace(/\.\d{3}Z$/, 'Z');
+}
+
 /** Current time as ISO 8601 UTC without milliseconds, matching the column defaults. */
 export function nowIso(): string {
-  return new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
+  return toIso(new Date());
 }
 
 /** Parse a nullable JSON-array column. Bad or non-array data yields an empty list. */

@@ -1,6 +1,6 @@
 # Server code
 
-Server-only code: the D1 database layer, repositories, and the local-only admin logic.
+Server-only code: the D1 database layer, repositories, the ingestion engine, and the local-only admin logic.
 Public pages and components must never import from this directory. Only server routes
 (`src/pages/api/*`) and the local-only admin (`src/pages/admin/*`, `src/admin/`) may.
 
@@ -11,6 +11,7 @@ db/            Database wrapper (bound statements only), row types, helpers, loc
 domain/        Internal models (some hold internal-only data such as review notes)
 repositories/  Public reads, admin operations, admin review read models, mappers
 admin/         Local-only admin: access guard, validation, HTTP helpers, messages
+ingestion/     Product ingestion engine, connector interface, fixture connector (local CLI only)
 ```
 
 Routes using this layer today: `src/pages/api/health.ts` (just `Database.ping()`) and the
@@ -34,6 +35,12 @@ server (see `src/admin/README.md`).
 - Runs in the Cloudflare Workers runtime: no Node-only APIs unless verified compatible.
 - Use relative imports here (keeps the code loadable outside Astro's alias config).
 
+- **Ingestion is internal and local.** `ingestion/` and `repositories/ingestion.ts` are reachable only
+  through `npm run ingest:local`. No route may call them, and `createPublicRepositories` must never
+  expose them. Retailer-specific acquisition belongs in `ingestion/sources/`, not in the engine.
+  See "Product ingestion" in the root `README.md`.
+
 ## Not built yet
 
-Ingestion, authentication (Cloudflare Access), offer editing, affiliate handling, price tracking.
+Real retailer connectors (the engine and a fixture connector exist), remote/scheduled ingestion,
+authentication (Cloudflare Access), offer editing, affiliate handling, price tracking.

@@ -44,6 +44,8 @@ interface OfferViewRow {
   availability: string;
   is_primary: number;
   last_checked_at: string | null;
+  source_id: string | null;
+  source_title: string | null;
 }
 
 // Preferred offer for display: primary first, else cheapest. (Unlike public reads, admin
@@ -143,7 +145,8 @@ export class AdminReviewRepository {
       this.db.all<OfferViewRow>(
         `SELECT o.id, o.retailer_id, r.name AS retailer_name, r.website_url AS retailer_website_url,
                 r.is_active AS retailer_is_active, o.retailer_product_id, o.product_url,
-                o.price_cents, o.currency, o.availability, o.is_primary, o.last_checked_at
+                o.price_cents, o.currency, o.availability, o.is_primary, o.last_checked_at,
+                o.source_id, o.source_title
          FROM product_offers o
          JOIN retailers r ON r.id = o.retailer_id
          WHERE o.product_id = ?
@@ -168,6 +171,8 @@ export class AdminReviewRepository {
       ...(row.retailer_product_id ? { retailerProductId: row.retailer_product_id } : {}),
       ...(row.price_cents !== null ? { priceCents: row.price_cents } : {}),
       ...(row.last_checked_at ? { lastCheckedAt: row.last_checked_at } : {}),
+      ...(row.source_id ? { sourceId: row.source_id } : {}),
+      ...(row.source_title ? { sourceTitle: row.source_title } : {}),
     }));
 
     return {

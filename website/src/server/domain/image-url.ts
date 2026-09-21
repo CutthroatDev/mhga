@@ -15,6 +15,10 @@
  * "no image", and the existing image placeholder renders. Nothing is fetched or proxied.
  *
  * Do not repeat this check in pages or components; call this from the public mappers.
+ *
+ * The rule itself is `toSafeHttpUrl`. It is exported because the same "only http(s), never
+ * repaired" policy applies to retailer purchase URLs (ingestion uses it for those), and there
+ * must be exactly one definition of it. `toPublicImageUrl` is the image-flavoured name.
  */
 
 // Explicit `http(s)://` followed by a host character. Rejects `https:example.com`,
@@ -24,7 +28,7 @@ const HTTP_URL_START = /^https?:\/\/[^/\s]/i;
 // Space, ASCII control characters, DEL, and C1 controls.
 const WHITESPACE_OR_CONTROL = /[\u0000- \u007f-\u009f]/;
 
-export function toPublicImageUrl(value: string | null | undefined): string | undefined {
+export function toSafeHttpUrl(value: string | null | undefined): string | undefined {
   if (typeof value !== 'string' || value.length === 0) return undefined;
   if (WHITESPACE_OR_CONTROL.test(value)) return undefined;
   if (!HTTP_URL_START.test(value)) return undefined;
@@ -36,3 +40,5 @@ export function toPublicImageUrl(value: string | null | undefined): string | und
     return undefined;
   }
 }
+
+export const toPublicImageUrl = toSafeHttpUrl;
