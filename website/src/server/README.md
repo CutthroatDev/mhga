@@ -11,7 +11,7 @@ db/            Database wrapper (bound statements only), row types, helpers, loc
 domain/        Internal models (some hold internal-only data such as review notes)
 repositories/  Public reads, admin operations, admin review read models, mappers
 admin/         Local-only admin: access guard, validation, HTTP helpers, messages
-ingestion/     Product ingestion engine, connector interface, fixture connector (local CLI only)
+ingestion/     Product ingestion engine, connector interface, fixture connector, and the URL importer (url-import/)
 ```
 
 Routes using this layer today: `src/pages/api/health.ts` (just `Database.ping()`) and the
@@ -36,11 +36,21 @@ server (see `src/admin/README.md`).
 - Use relative imports here (keeps the code loadable outside Astro's alias config).
 
 - **Ingestion is internal and local.** `ingestion/` and `repositories/ingestion.ts` are reachable only
-  through `npm run ingest:local`. No route may call them, and `createPublicRepositories` must never
-  expose them. Retailer-specific acquisition belongs in `ingestion/sources/`, not in the engine.
-  See "Product ingestion" in the root `README.md`.
+  through `npm run ingest:local` and the local-only admin's Import Products page
+  (`src/pages/admin/products/import.astro`, guarded like every admin route). No other route may call them,
+  and `createPublicRepositories` must never expose them. Retailer-specific acquisition belongs in
+  `ingestion/sources/`, not in the engine. See "Product ingestion" and "Importing products from URLs" in the
+  root `README.md`.
+- **The URL importer fetches reviewer-supplied URLs, so SSRF protection is mandatory.** Every fetch goes through
+  `ingestion/url-import/safe-fetch.ts` (public addresses only, every redirect re-validated, connection pinned to
+  the verified address, time and size limits, HTML only). Never call `fetch` on a reviewer-supplied URL directly.
+  Its transport (`node-transport.ts`) is the one deliberate use of Node-only APIs in this directory, because the
+  Workers runtime has no DNS or address pinning; it is acceptable only because the importer runs in the
+  local-only admin, and it fails closed where Node is unavailable.
+- **Imports go through the engine.** `url-import/` produces candidates via `sources/url-import.ts` and calls
+  `runIngestion`. It must never write products or offers itself.
 
 ## Not built yet
 
-Real retailer connectors (the engine and a fixture connector exist), remote/scheduled ingestion,
+Retailer-specific connectors (the engine, a fixture connector and the generic URL importer exist), remote/scheduled ingestion,
 authentication (Cloudflare Access), offer editing, affiliate handling, price tracking.

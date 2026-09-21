@@ -12,7 +12,7 @@
  * Intentionally not covered: UI, the CLI launcher, scraping, or any real retailer.
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { runIngestion, type IngestionResult } from '../src/server/ingestion/engine';
+import { runIngestion, type IngestionResult, type ItemReport } from '../src/server/ingestion/engine';
 import type { CandidateInput } from '../src/server/ingestion/candidate';
 import type { ProductIngestionSource } from '../src/server/ingestion/source';
 import { createFixtureSource } from '../src/server/ingestion/sources/fixture';
@@ -450,6 +450,55 @@ describe('writes and tracking', () => {
     expect(result.status).toBe('failed');
     expect(await world.count('products')).toBe(0);
     expect((await world.repos.retailers.getById(retailer.id))?.isActive).toBe(false);
+  });
+});
+
+// ---- observing each item ------------------------------------------------------------------
+
+describe('per-item reports', () => {
+  it('tells an observer what became of each item and which product it belongs to, without changing the run', async () => {
+    await ingest([listing({ externalId: 'KNOWN', url: 'https://test-shop.example/known' })], daysBeforeNow(1));
+    const known = await onlyProduct();
+
+    const reports: ItemReport[] = [];
+    const result = await runIngestion(
+      world.d1,
+      source([
+        listing({ externalId: 'KNOWN', url: 'https://test-shop.example/known', priceCents: 1 }), // updated
+        listing({ externalId: 'NEW', url: 'https://test-shop.example/new' }), //                    created
+        listing({ externalId: 'NEW', url: 'https://test-shop.example/new' }), //                    duplicate
+        listing({ externalId: 'BAD', url: 'javascript:alert(1)' }), //                              invalid
+        listing({ externalId: 'NOCAT', url: 'https://test-shop.example/nocat', category: undefined }), // unmapped
+      ]),
+      { now: () => CatalogWorld.NOW, onItem: (report) => reports.push(report) },
+    );
+
+    expect(reports.map((report) => [report.index, report.outcome, report.code])).toEqual([
+      [0, 'updated', undefined],
+      [1, 'created', undefined],
+      [2, 'skipped', 'duplicate'],
+      [3, 'skipped', 'invalid'],
+      [4, 'skipped', 'unmapped_category'],
+    ]);
+    expect(reports[0]?.productId).toBe(known.id); // an existing listing reports its existing product
+    expect(reports[1]?.productId).toBeDefined();
+    expect(reports[1]?.productId).not.toBe(known.id);
+    expect(reports[2]?.productId).toBeUndefined();
+    // The observer changed nothing about the run.
+    expect(result).toMatchObject({ productsCreated: 1, offersUpdated: 1, duplicates: 1, invalid: 1, unmapped: 1, status: 'partial' });
+  });
+
+  it('is not affected by an observer that throws', async () => {
+    const result = await runIngestion(world.d1, source([listing({ externalId: 'A', url: 'https://test-shop.example/a' }), listing({ externalId: 'B', url: 'https://test-shop.example/b' })]), {
+      now: () => CatalogWorld.NOW,
+      onItem: () => {
+        throw new Error('observer bug');
+      },
+      onUnexpectedError: () => undefined,
+    });
+
+    expect(result).toMatchObject({ status: 'succeeded', productsCreated: 2 });
+    expect(await world.count('products')).toBe(2);
   });
 });
 

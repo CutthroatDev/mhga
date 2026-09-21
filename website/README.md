@@ -14,8 +14,9 @@ offer. DIY project content is still static (see *Public catalog*).
 - Database: **Cloudflare D1** (direct SQL, no ORM)
 - Deployment: **Cloudflare** Worker + static assets, configured in `wrangler.jsonc`
 
-No PHP, ORM, or affiliate integration exists, and there are **no real retailer connectors yet** (the
-ingestion *engine* exists and is proven with a fictional fixture source; see *Product ingestion*). There is
+No PHP, ORM, or affiliate integration exists, and there are **no retailer-specific connectors yet**. Products
+enter the catalog as *pending* through the ingestion engine, either from a fictional fixture or from product
+page URLs a reviewer submits in the local admin (see *Product ingestion* and *Importing products from URLs*). There is
 **no production authentication**: the review admin (see *Admin*) is local-development only and is disabled
 in every production build.
 
@@ -282,8 +283,10 @@ is never part of a migration: the seed is local-only.
 ## Product ingestion
 
 The **ingestion engine** turns structured retailer listings into *pending* products and keeps their offers
-fresh. It is an internal, local-only tool: nothing exposes it over HTTP, and **no real retailer connector
-exists yet**. The only source is a fictional **fixture** that proves the engine end to end.
+fresh. It is an internal, local-only tool. It has two entry points, both local: `npm run ingest:local` (the
+fictional **fixture** source) and the local-only admin's **Import Products** page (see *Importing products
+from URLs*). Nothing exposes ingestion over HTTP outside the local admin, and **no retailer-specific connector
+exists yet**.
 
 ```
 connector (per retailer)            engine (retailer-agnostic)
@@ -301,10 +304,12 @@ Human review in `/admin` stays the only gate: **pending -> approve -> public**.
 | ------------------------- | ------------------------------------------------------------------------------------------ |
 | `source.ts`               | `ProductIngestionSource`: the connector contract (`id`, `retailer`, `fetchItems`, `toCandidate`) |
 | `candidate.ts`            | `CandidateInput` (untrusted, from a connector) -> `validateCandidate` -> `IngestionCandidate` |
-| `engine.ts`               | `runIngestion(d1, source)`: dedupe, identity, create/refresh, run tracking, result         |
+| `engine.ts`               | `runIngestion(d1, source)`: dedupe, identity, create/refresh, run tracking, result. An optional `onItem` observer reports each item's outcome and product id (it cannot change what the engine does) |
 | `category-mapping.ts`     | Supported categories (`outdoor`, `indoor`, `costumes`) and an exact-match mapper factory   |
 | `url.ts`, `price.ts`      | Conservative retailer-URL normalization; text/dollars -> integer cents                     |
 | `sources/fixture.ts`      | The controlled fixture connector (fictional feed, two snapshots)                            |
+| `sources/url-import.ts`   | The URL-import connector: reviewer-submitted product pages -> candidates (see *Importing products from URLs*) |
+| `url-import/`             | Everything the URL importer needs: input parsing, safe fetching, metadata extraction, the pipeline |
 | `local-cli.ts`            | Logic behind `npm run ingest:local`                                                        |
 | `repositories/ingestion.ts` | All ingestion SQL. New products are `pending` via a SQL literal; refresh never writes `products` |
 
@@ -381,7 +386,9 @@ renaming a listing updates only the offer's `source_title`, which the admin show
 
 ### Adding a real retailer connector (later)
 
-Implement `ProductIngestionSource` in `src/server/ingestion/sources/`, register it in `local-cli.ts`, and add
+The generic URL importer (below) covers any page that publishes standard product metadata. A retailer whose pages
+do not (or that offers an API or feed) gets its own connector: implement `ProductIngestionSource` in
+`src/server/ingestion/sources/`, register it in `local-cli.ts`, and add
 its category table with `createCategoryMapper`. Do not edit `engine.ts` or `repositories/ingestion.ts`. See
 *Not built yet* below for what must exist before the first one.
 
@@ -389,12 +396,162 @@ its category table with `createCategoryMapper`. Do not edit `engine.ts` or `repo
 authentication they need; prioritising *stale* offers for refresh before they expire (`classifyOfferFreshness`
 already labels them); manual merge/reconciliation of duplicate products; a review-queue view of skipped candidates.
 
+## Importing products from URLs (local admin)
+
+**Reviewer-driven discovery.** A person finds quality Halloween products while browsing, collects their
+product-page URLs, and imports them in the local admin. The importer removes the tedious data entry (name, image,
+price, ...); the reviewer stays responsible for deciding what is worth listing. Imported products are **always
+pending**: nothing becomes public until the reviewer approves it in the normal review interface.
+
+Open <http://localhost:4321/admin/products/import> (linked as **Import products** in the admin navigation).
+It is part of the local-only admin: it is refused in every production build, on any non-loopback host, and for
+any state-changing request that is not same-origin (see *Admin*). There is no public route or API for it.
+
+### Using it
+
+1. **Choose a category** (Outdoor decorations, Indoor decorations, or Costumes). It is applied to every **new**
+   product in that import. A page rarely states a category that could be mapped without guessing, so none is
+   inferred, and ingestion never creates categories. Products that already exist keep their own category (it is
+   reviewer-owned), so importing a known URL under a different category changes nothing. To import products
+   of different categories, do one import per category.
+2. **Give it URLs**, either or both:
+   - **Paste them**, one per line. Blank lines are ignored and whitespace is trimmed.
+   - **Upload a CSV** with a header row named `url`:
+
+     ```csv
+     url
+     https://example.com/product/one
+     https://example.com/product/two
+     ```
+
+     Blank rows are ignored and values are trimmed. Quoting works as in ordinary CSV (a quoted value may contain
+     commas, `""` for a quote, or line breaks; CRLF, LF and a leading byte-order mark are all fine). Other columns
+     are ignored today; the parser keeps each row keyed by its header so an optional column can be read later
+     without redesigning it. A malformed CSV (no `url` header, an unclosed quote) is rejected with a message
+     instead of being guessed at.
+3. **Import.** Up to 50 URLs per submission. Both input methods become one list and go through one pipeline.
+4. **Read the results.** Each URL gets one row, in the order submitted, with a link to its review page when it
+   has a product, then a summary count. One failing URL never stops the others.
+
+| Result    | Meaning                                                                                              |
+| --------- | ---------------------------------------------------------------------------------------------------- |
+| Imported  | A new **pending** product and its offer were created.                                                |
+| Updated   | The listing already existed; its **offer** was refreshed (price, availability, link). The product was not touched. |
+| Unchanged | The listing already existed and nothing changed; it was re-verified (`last_checked_at`).             |
+| Skipped   | Not a valid or public address; a repeat of an earlier line or listing; or the page has no usable product metadata. |
+| Conflict  | The listing's id and URL disagree with what is stored. Nothing was changed; a person must decide.    |
+| Failed    | The page could not be retrieved (timeout, HTTP error, not a web page, blocked redirect) or could not be saved. |
+
+Identical URLs (after normalization: trimmed, lower-case host, no `#fragment`) are collapsed **before** any
+network request, so each URL is fetched at most once.
+
+### How it relates to the ingestion engine
+
+The importer is a **connector, not a second way to create products**. Its pipeline (`src/server/ingestion/url-import/run-import.ts`):
+
+```
+pasted lines / CSV  ->  prepareUrls (normalize, reject unsafe, dedupe)       no network
+                    ->  fetchPublicPage + extractProduct, per URL             failures stay per URL
+                    ->  group by retailer (host, www-insensitive)
+                    ->  runIngestion(d1, createUrlImportSource(...)) per retailer   THE existing engine
+                    ->  one result row per submitted URL
+```
+
+The engine needs a retailer up front, and a page's retailer is only known from its final address (after
+redirects), so pages are fetched first and one engine run is made per retailer. A page that could not be fetched
+never reaches the engine, so a failed fetch changes nothing about any listing. Because everything that reaches the
+database goes through `runIngestion`, every rule in *Product ingestion* holds unchanged for imported URLs: new
+products are `pending`, nothing is auto-approved, an existing product's review status and curated fields are never
+overwritten (only the offer is refreshed), identity is retailer + listing id else exact URL (never title, never
+across retailers), prices are integer cents, only an explicit statement marks a listing discontinued, `is_primary`
+and `affiliate_url` are never touched, and a retailer a human deactivated is neither reactivated nor imported for.
+
+**Retailers.** A retailer is identified by its host name with a leading `www.` ignored (`www.shop.example` and
+`shop.example` are one retailer, slug `shop-example`). Other subdomains are *not* merged. A retailer that already
+exists with the same website host is reused, whatever its slug (and if the slug the importer would derive is already
+used by a retailer for a *different* website, a short suffix keeps the two apart). A new one is named from the
+page's `og:site_name`, else its host name. The importer never renames or reactivates an existing retailer.
+
+**Listing address.** The offer records the page's canonical URL (`<link rel="canonical">`, else `og:url`) when it
+is on the same site and is not the site's home page, so tracking parameters do not make the same listing look new.
+Otherwise it records the final URL after redirects.
+
+### What is read from a page (generic, no retailer-specific rules)
+
+In order of preference, using only structured data the page publishes: **JSON-LD `Product`** (schema.org:
+name, description, image, offers), then **Open Graph / `product:*`** metadata (`og:title`, `og:image`,
+`product:price:amount`, `product:availability`, ...), then **standard HTML metadata** (`<title>`,
+`<meta name=description>`, canonical link). There are no CSS selectors, no page scripts are run, and there is no
+AI inference. Anything not clearly stated is left **unknown**:
+
+- A page must show it is a product page (a JSON-LD `Product`, or `og:type=product`); a page with only a title
+  (a home page, an article, a login wall) is skipped, not turned into a product.
+- Several Products in one page (a carousel) are not guessed between: the one whose `url` is the page's own is
+  used, otherwise JSON-LD is ignored and Open Graph is the fallback.
+- **Price** must be one clear amount with a currency: `"29.99"`, `29.99` and `"$1,299.00"` become integer cents
+  exactly; `"19,99"`, ranges (`AggregateOffer` low/high, "from $5"), several different offers, `0`, fractions of
+  a cent, and a price with no currency are **unknown** (the product still imports, with no price). A currency is
+  never assumed.
+- **Availability** is `in_stock` or `out_of_stock` only when clearly stated; pre-order, back-order and the like are
+  unknown. **Discontinued** is set only for an explicit `Discontinued` availability.
+- **Listing id** is taken only from an explicit `product:retailer_item_id`. `sku`, `mpn` and `gtin` are not used:
+  they often identify a model or a variant, and a shared one would make two listings look like one.
+- An unsafe or missing **image** is dropped (the product is created without one); a missing description or price is
+  simply empty.
+
+### Security: server-side fetching (SSRF)
+
+The importer makes the *server* request reviewer-supplied URLs, so it treats them as untrusted
+(`url-import/public-address.ts`, `safe-fetch.ts`, `node-transport.ts`):
+
+- Only `http:`/`https:`, no credentials in the URL, and only the standard ports (80/443).
+- Never fetched: `localhost` and other local-only names (`.local`, `.internal`, `.lan`, single-label names, cloud
+  metadata names), and any IP that is not public: loopback, private (RFC 1918), CGNAT, **link-local (including the
+  `169.254.169.254` metadata address)**, documentation/benchmark/multicast/reserved ranges, and IPv6 outside global
+  unicast (which excludes `::1`, unique-local, link-local, IPv4-mapped and NAT64 forms). Obfuscated IPv4 spellings
+  (`2130706433`, `0x7f.1`, `0177.0.0.1`) are normalized by the URL parser and caught.
+- A host **name** is resolved and *every* address must be public (one private answer refuses it). The connection is
+  then made to the address that was checked, not to the name, so there is no DNS-rebinding window.
+- Redirects are followed by hand (at most 5) and **each target goes through all of the above again**, so a public
+  URL cannot redirect the importer onto an internal address.
+- 10 s total per page (redirects included), at most 2 MiB of body read (measured *after* decompression), HTML
+  responses only (`text/html`, `application/xhtml+xml`); nothing else is read. 4 pages are fetched at a time.
+- No cookies or credentials are sent. The request identifies itself honestly (`MHGA-Product-Importer/1.0`); it does
+  not pretend to be a browser.
+- Failure messages are fixed text. Nothing from the remote response, the network stack, SQL, or a stack trace is
+  shown to the reviewer.
+
+The transport uses Node's `dns`/`https` (the Workers runtime has neither DNS nor address pinning). That is
+acceptable only because the importer lives in the local-only admin (it runs in the dev server). If Node is not
+available it fails closed: every URL reports "could not be retrieved".
+
+### Limitations
+
+- **Some retailers block server-side retrieval** (for example, Etsy answers with HTTP 403) or render product data
+  only with JavaScript. The importer reports those as *Failed* or *Skipped*; it does not use a headless browser,
+  spoof a browser, or work around blocking. Add such a product by hand, or later through a retailer-specific
+  connector.
+- Only what a page publishes as structured data is read. Microdata and site-specific markup are not; a page
+  without JSON-LD `Product` or `og:type=product` is skipped.
+- `robots.txt` is not consulted. Each fetch is a single page a reviewer explicitly asked for (like a link
+  preview), not crawling.
+- One category per import; up to 50 URLs per import; no scheduled or remote imports.
+- A page whose price is not stated unambiguously imports with **no price**. Re-importing a listing whose page no
+  longer states a price records the price as unknown (the engine's normal rule: an observation is the truth of that
+  moment) and refreshes `last_checked_at`.
+
+### Affiliate links are optional
+
+A normal retailer URL is a valid offer. The importer never generates or changes an `affiliate_url`. Building a
+quality catalog comes first; an affiliate URL can be attached to an existing offer later without recreating the
+product.
+
 ## Admin (local development only)
 
 A product review interface: see products awaiting review, inspect public vs. internal
 information and retailer offers, approve / reject / return to pending, keep internal
-review notes, and make basic edits (name, summary, description, category, quality notes,
-badges, details).
+review notes, make basic edits (name, summary, description, category, quality notes,
+badges, details), and import products from product-page URLs.
 
 > ⚠️ **This is NOT production authentication.** Nothing identifies who is using it. It
 > works only on a local development server and is **disabled in every production build**.
@@ -418,6 +575,7 @@ other hostname is refused, so `astro dev --host` does not expose it. Re-run
 | `/admin`                                               | Dashboard: counts and the next pending items |
 | `/admin/products`                                      | All products (pending first)                |
 | `/admin/products/pending` `/approved` `/rejected`      | Review queues                               |
+| `/admin/products/import`                               | Import products from URLs (paste or CSV); see *Importing products from URLs* |
 | `/admin/products/<id-or-slug>`                         | Review page (public vs. internal info)      |
 | `POST /api/admin/products/<id>/review`                 | Change status and/or save internal notes    |
 | `POST /api/admin/products/<id>/update`                 | Save edited product information             |
@@ -459,9 +617,10 @@ npm test              # run once, non-interactive
 npm run test:watch    # re-run on change while developing
 ```
 
-A small [Vitest](https://vitest.dev) suite (50 tests) that protects the **product visibility and
-review rules** (the rules that keep unreviewed or unsafe products off the public site) and the
-**ingestion engine's business rules**. It runs the real repositories and engine, with nothing mocked.
+A focused [Vitest](https://vitest.dev) suite (159 tests) that protects the **product visibility and
+review rules** (the rules that keep unreviewed or unsafe products off the public site), the
+**ingestion engine's business rules**, and the **URL importer's parsing, safety and pipeline rules**. It runs
+the real repositories and engine, with nothing mocked except the network.
 
 **Covered:** pending and rejected products are hidden; an approved product with an eligible offer is
 public; an inactive retailer, a discontinued-only offer, or an unsafe (non-http/https) purchase URL
@@ -480,6 +639,21 @@ re-ingestion (approved stays public, rejected stays hidden); invalid, unsafe, un
 skipped without stopping the run; a missing listing or an unreadable source never marks anything discontinued;
 product + offer creation is atomic; run tracking; and the fixture connector end to end (ingest, approve, refresh,
 curated data preserved).
+
+**URL import coverage** (`tests/url-import-*.test.ts`, `tests/url-import.test.ts`): manual URL and CSV parsing
+(quoting, line endings, blank rows, malformed input, the `url` header), normalization and de-duplication before any
+network work, and the category being required; the SSRF rules (loopback, private, link-local/metadata, IPv6 and
+obfuscated IPv4 spellings, non-http schemes, credentials, ports, host names resolving to private addresses, and a
+redirect from a public URL to a private one, at any hop) asserting that nothing blocked is ever looked up or
+requested; redirect limits, timeouts, size and content-type limits; the real Node transport against a throwaway
+loopback server (address pinning, gzip, a compression bomb, redirects not followed, cancellation);
+JSON-LD `Product` and Open Graph extraction, malformed or ambiguous metadata, missing optional fields, integer-cent
+price conversion with invalid/floating/ambiguous prices left unknown, availability and explicit-only discontinued,
+canonical-URL rules, and unsafe image URLs being dropped; and, through the real engine, that an imported product
+is created pending and not public, one failing URL never stops a batch, re-importing never duplicates, approved
+and rejected products keep their status, curated fields and the affiliate URL are never overwritten, and identity
+conflicts and retailer handling (www vs. non-www, existing retailers, a deactivated retailer) behave. All of it uses
+fixture pages: no test touches the internet or a real retailer.
 
 **How it works:** each test file builds its own **in-memory D1** (Miniflare, the same engine as local D1)
 from the real `migrations/*.sql`, so a schema change that breaks the repositories fails the tests. It

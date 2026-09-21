@@ -14,7 +14,7 @@ import { siteConfig } from '@/config/site';
 
 interface Props {
   title: string;
-  active?: 'dashboard' | 'pending' | 'approved' | 'rejected' | 'all';
+  active?: 'dashboard' | 'pending' | 'approved' | 'rejected' | 'all' | 'import';
 }
 
 const { title, active } = Astro.props;
@@ -25,6 +25,7 @@ const nav = [
   { key: 'approved', label: 'Approved', href: '/admin/products/approved' },
   { key: 'rejected', label: 'Rejected', href: '/admin/products/rejected' },
   { key: 'all', label: 'All products', href: '/admin/products' },
+  { key: 'import', label: 'Import products', href: '/admin/products/import' },
 ] as const;
 ---
 

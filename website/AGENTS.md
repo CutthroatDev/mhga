@@ -80,9 +80,16 @@ folder structure.
   Keep the DB unique constraints; an identity disagreement is a reported conflict, not a guess.
 - **Do not mark a listing discontinued because it was missing from a run.** Only an explicit `discontinued: true`
   from the source does. A failed fetch fails the run and changes nothing. Freshness ages unverified offers out.
-- **Do not expose unauthenticated ingestion HTTP routes.** Ingestion runs only through `npm run ingest:local`,
-  which reaches the LOCAL D1 only. Do not add `npm run ingest`, a remote ingest script, `--remote` support,
-  or Cron Triggers until production authentication and deployment are decided deliberately.
+- **Do not expose unauthenticated ingestion HTTP routes.** Ingestion runs only through `npm run ingest:local`
+  (which reaches the LOCAL D1 only) and the local-only admin Import Products page (`/admin/products/import`),
+  which is guarded like every admin route and refused in production. Do not add any other route that runs
+  ingestion, `npm run ingest`, a remote ingest script, `--remote` support, or Cron Triggers until production
+  authentication and deployment are decided deliberately.
+- **Reviewer-submitted URLs are fetched only through `src/server/ingestion/url-import/safe-fetch.ts`** (public
+  addresses only, every redirect re-validated, size/time limits, HTML only). Never `fetch` a reviewer-supplied
+  URL directly, and never weaken those checks. The URL importer is a connector: it produces candidates and calls
+  `runIngestion`; it must not write products or offers itself, and the reviewer-chosen category applies to NEW
+  products only. Imported products stay `pending`.
 - **Retailer-specific acquisition belongs in connectors** (`src/server/ingestion/sources/`, implementing
   `ProductIngestionSource`), not in the ingestion core. Connectors do not touch the database, review status,
   or categories. Category mapping goes through `category-mapping.ts` to existing categories only; ingestion

@@ -10,13 +10,14 @@ production hostname.
 - `src/admin/layouts/AdminLayout.astro` – its own shell (no public header/footer/theme
   toggle/decorations).
 - `src/admin/components/` – status badge, tabs, queue table, offers table, review and edit
-  forms, notices.
+  forms, notices, and the import form and import results.
 - `src/admin/styles/admin.css` – the admin visual system (loaded only by the admin layout).
 - `src/admin/format.ts` – date/price display helpers.
 - `src/pages/admin/**` – the pages: `/admin`, `/admin/products[/pending|approved|rejected]`,
-  `/admin/products/<id-or-slug>`.
+  `/admin/products/import`, `/admin/products/<id-or-slug>`.
 - `src/pages/api/admin/products/[id]/{review,update}.ts` – the write endpoints (POST only).
-- `src/server/admin/` – the local-only guard (`access.ts`), input validation, HTTP helpers.
+- `src/server/admin/` – the local-only guard (`access.ts`), input validation (including the import form,
+  `import-form.ts`), HTTP helpers.
 - `src/server/repositories/` – all database access (`adminProducts`, `adminReview`, ...).
   Pages contain no SQL.
 
@@ -45,6 +46,19 @@ fails the build if any admin page is prerendered.
    `src/server/admin/validation.ts`; redirect (303) to fixed paths; never return SQL errors.
 4. Use repository functions. No SQL in pages or components.
 5. Never link `/admin` from the public navigation.
+
+## Import Products (`/admin/products/import`)
+
+Reviewers paste product URLs or upload a CSV (a `url` column); the server reads each page's public product
+metadata and creates **pending** products through the ingestion engine. Details, limits and the security model
+are in the root `README.md` ("Importing products from URLs").
+
+It is the one admin page that handles both GET (the form) and POST (runs the import and renders the results on
+the same page; results are not stored, so there is no redirect). It follows the rules above: `prerender = false`,
+`localAdminDenied` first (which also enforces same-origin for the POST), methods other than GET/HEAD/POST get
+`405`, all input is validated on the server (`src/server/admin/import-form.ts`), no SQL in the page, and failures
+show fixed messages, never raw errors. The server fetches the submitted URLs, so it must only ever do so through
+`safe-fetch.ts`.
 
 ## Later: when Cloudflare Access is added (production hostname exists)
 

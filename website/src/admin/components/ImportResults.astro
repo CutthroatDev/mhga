@@ -1,0 +1,97 @@
+---
+// Per-URL results of an import, with summary counts. Renders text produced by the importer
+// (fixed or engine-written messages), never a remote response.
+import type { ImportStatus, UrlImportReport } from '@/server/ingestion/url-import/run-import';
+import Notice from './Notice.astro';
+
+interface Props {
+  report: UrlImportReport;
+}
+
+const { report } = Astro.props;
+const { summary, results } = report;
+
+// Label, colour family and icon per status. The label and icon shape carry the meaning as well as colour.
+const kinds: Record<ImportStatus, { label: string; tone: 'ok' | 'info' | 'warn' | 'bad' }> = {
+  imported: { label: 'Imported', tone: 'ok' },
+  updated: { label: 'Updated', tone: 'info' },
+  unchanged: { label: 'Unchanged', tone: 'info' },
+  skipped: { label: 'Skipped', tone: 'warn' },
+  conflict: { label: 'Conflict', tone: 'warn' },
+  failed: { label: 'Failed', tone: 'bad' },
+};
+
+const counts = [
+  ['imported', summary.imported],
+  ['updated', summary.updated],
+  ['unchanged', summary.unchanged],
+  ['skipped', summary.skipped],
+  ['conflict', summary.conflicts],
+  ['failed', summary.failed],
+] as const;
+---
+
+<section aria-labelledby="import-results-heading">
+  <h2 id="import-results-heading">Import results</h2>
+
+  <Notice kind={summary.imported > 0 ? 'success' : 'info'}>
+    <span>
+      {summary.submitted} submitted:
+      {counts.filter(([, count]) => count > 0).map(([status, count], index) => (
+        <>{index > 0 ? ', ' : ' '}<strong>{count}</strong> {kinds[status].label.toLowerCase()}</>
+      ))}.
+      {summary.imported > 0 && ' New products are pending review and are not public until you approve them.'}
+    </span>
+    {
+      summary.imported > 0 && (
+        <span class="notice__actions">
+          <a href="/admin/products/pending">Open pending queue</a>
+        </span>
+      )
+    }
+  </Notice>
+
+  <div class="table-wrap">
+    <table class="queue">
+      <thead>
+        <tr>
+          <th scope="col">Result</th>
+          <th scope="col">URL</th>
+          <th scope="col">Details</th>
+          <th scope="col"><span class="visually-hidden">Review</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        {
+          results.map((row) => {
+            const kind = kinds[row.status];
+            return (
+              <tr>
+                <td data-label="Result">
+                  <span class={`status status--${kind.tone}`}>
+                    <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                      {kind.tone === 'ok' && <path d="M3 8.5l3.2 3.2L13 4.8" />}
+                      {kind.tone === 'info' && <path d="M3.5 8h9" />}
+                      {kind.tone === 'warn' && <path d="M8 3.5v5.5M8 12v.5" />}
+                      {kind.tone === 'bad' && <path d="M4 4l8 8M12 4l-8 8" />}
+                    </svg>
+                    {kind.label}
+                  </span>
+                </td>
+                <td class="name url" data-label="URL">{row.input}</td>
+                <td data-label="Details">{row.message}</td>
+                <td class="action">
+                  {row.productId && (
+                    <a class="admin-btn admin-btn--small admin-btn--primary" href={`/admin/products/${row.productId}`}>
+                      Review<span class="visually-hidden">: {row.input}</span>
+                    </a>
+                  )}
+                </td>
+              </tr>
+            );
+          })
+        }
+      </tbody>
+    </table>
+  </div>
+</section>

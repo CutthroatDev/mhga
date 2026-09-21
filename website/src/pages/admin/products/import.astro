@@ -1,0 +1,111 @@
+---
+// LOCAL-ONLY: Import Products. Never prerender (see astro.config.mjs safety net).
+//
+// GET shows the form. POST runs the import and shows the results on the same page. Results are
+// not stored, so there is nothing to redirect to (post-redirect-get does not apply).
+export const prerender = false;
+
+import AdminLayout from '@/admin/layouts/AdminLayout.astro';
+import ImportForm from '@/admin/components/ImportForm.astro';
+import ImportResults from '@/admin/components/ImportResults.astro';
+import Notice from '@/admin/components/Notice.astro';
+import { localAdminDenied } from '@/server/admin/access';
+import { methodNotAllowed, readForm } from '@/server/admin/http';
+import { parseImportForm, type ImportFormField } from '@/server/admin/import-form';
+import { getD1 } from '@/server/db/runtime';
+import { createPageFetcher } from '@/server/ingestion/url-import/page-fetcher';
+import { runUrlImport, type UrlImportReport } from '@/server/ingestion/url-import/run-import';
+
+const denied = localAdminDenied(Astro.request);
+if (denied) return denied;
+
+const method = Astro.request.method.toUpperCase();
+if (method !== 'GET' && method !== 'HEAD' && method !== 'POST') return methodNotAllowed(['GET', 'HEAD', 'POST']);
+
+const d1 = getD1(Astro.locals);
+if (!d1) return new Response('Database unavailable', { status: 503 });
+Astro.response.headers.set('Cache-Control', 'no-store');
+
+let report: UrlImportReport | undefined;
+let errors: string[] = [];
+let invalid: ImportFormField[] = [];
+let submittedUrls = '';
+let submittedCategory = '';
+let unavailable = false;
+
+if (method === 'POST') {
+  const form = await readForm(Astro.request);
+  if (form instanceof Response) return form;
+
+  const rawUrls = form.get('urls');
+  const rawCategory = form.get('category');
+  submittedUrls = typeof rawUrls === 'string' ? rawUrls : '';
+  submittedCategory = typeof rawCategory === 'string' ? rawCategory : '';
+
+  const parsed = await parseImportForm(form);
+  if (!parsed.ok) {
+    errors = parsed.errors;
+    invalid = parsed.invalid;
+  } else {
+    try {
+      report = await runUrlImport(
+        d1,
+        { urls: parsed.urls, category: parsed.category },
+        {
+          fetchPage: createPageFetcher(),
+          onUnexpectedError: (context, error) => console.error(`[admin import] ${context}`, error instanceof Error ? error.message : 'unknown error'),
+        },
+      );
+    } catch (error) {
+      console.error('[admin import] unexpected failure', error instanceof Error ? error.message : 'unknown error');
+      unavailable = true;
+    }
+  }
+}
+---
+
+<AdminLayout title="Import products" active="import">
+  <div class="admin-pagehead">
+    <div>
+      <h1>Import products</h1>
+      <p class="admin-lede">
+        Paste product page URLs or upload a CSV. The server reads each page's public product
+        information and adds it as a <strong>pending</strong> product for you to review. Nothing
+        becomes public until you approve it.
+      </p>
+    </div>
+  </div>
+
+  {
+    errors.length > 0 && (
+      <Notice kind="error">
+        <div>
+          <strong>The import did not run.</strong>
+          <ul>
+            {errors.map((message) => (
+              <li>{message}</li>
+            ))}
+          </ul>
+        </div>
+      </Notice>
+    )
+  }
+  {unavailable && <Notice kind="error">The import could not be completed. Nothing was changed by this request; please try again.</Notice>}
+
+  {report && <ImportResults report={report} />}
+
+  <h2 style="margin-top: var(--space-5)">{report ? 'Import more' : 'New import'}</h2>
+  <ImportForm urls={report ? '' : submittedUrls} category={submittedCategory} invalid={invalid} />
+
+  <div style="margin-top: var(--space-5)">
+    <Notice kind="info">
+      <span>
+        Only public product metadata is read (schema.org <code>Product</code> data, then Open Graph and
+        standard page metadata). Anything a page does not state clearly is left unknown, and pages
+        without product metadata are skipped. Re-importing a URL only refreshes its offer; your edits
+        to the product are never overwritten. Affiliate links are optional and are never generated or
+        changed here.
+      </span>
+    </Notice>
+  </div>
+</AdminLayout>

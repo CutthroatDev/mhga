@@ -1,0 +1,73 @@
+---
+// The Import Products form: paste URLs and/or upload a CSV, and choose the category for NEW
+// products. The browser attributes are only a convenience; the server re-validates everything.
+import { IMPORT_CATEGORY_OPTIONS, type ImportFormField } from '@/server/admin/import-form';
+import { MAX_IMPORT_URLS } from '@/server/ingestion/url-import/input';
+
+interface Props {
+  /** Text to put back in the text area after a rejected submission. */
+  urls?: string;
+  category?: string;
+  invalid?: ImportFormField[];
+}
+
+const { urls = '', category = '', invalid = [] } = Astro.props;
+const bad = new Set<string>(invalid);
+---
+
+<form class="form" method="post" action="/admin/products/import" enctype="multipart/form-data">
+  <div class="field">
+    <label for="import-category">Category for new products</label>
+    <select id="import-category" name="category" required aria-invalid={bad.has('category') ? 'true' : undefined} aria-describedby="import-category-hint">
+      <option value="" selected={category === ''} disabled>Choose a category…</option>
+      {
+        IMPORT_CATEGORY_OPTIONS.map((option) => (
+          <option value={option.slug} selected={category === option.slug}>
+            {option.label}
+          </option>
+        ))
+      }
+    </select>
+    <p id="import-category-hint" class="hint">
+      Applied to every product this import creates. Products that already exist keep their own category.
+    </p>
+  </div>
+
+  <div class="field">
+    <label for="import-urls">Product URLs</label>
+    <textarea
+      id="import-urls"
+      name="urls"
+      rows="8"
+      spellcheck="false"
+      autocomplete="off"
+      placeholder="https://shop.example/products/glow-skeleton"
+      aria-describedby="import-urls-hint"
+      aria-invalid={bad.has('urls') ? 'true' : undefined}>{urls}</textarea>
+    <p id="import-urls-hint" class="hint">One URL per line, up to {MAX_IMPORT_URLS} in total. Blank lines are ignored.</p>
+  </div>
+
+  <div class="field">
+    <label for="import-csv">Or upload a CSV</label>
+    <input
+      id="import-csv"
+      name="csv"
+      type="file"
+      accept=".csv,text/csv"
+      aria-describedby="import-csv-hint"
+      aria-invalid={bad.has('csv') ? 'true' : undefined}
+    />
+    <p id="import-csv-hint" class="hint">
+      A header row named <code>url</code>, then one product URL per row. Other columns are ignored. You can
+      use the text area and a CSV together.
+    </p>
+  </div>
+
+  <div class="actions">
+    <button class="admin-btn admin-btn--primary" type="submit">Import products</button>
+  </div>
+  <p class="hint">
+    The server will request each page to read its public product information. It can take a little while;
+    please leave this page open.
+  </p>
+</form>

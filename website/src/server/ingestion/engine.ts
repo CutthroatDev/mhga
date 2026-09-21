@@ -55,11 +55,28 @@ export interface IngestionResult extends IngestionRunCounts {
   errorCount: number;
 }
 
+/**
+ * What became of one item, reported as it is handled. For callers that must tell the user about
+ * each item (the admin URL importer); the run's counts and stored issues are unaffected by it.
+ */
+export interface ItemReport {
+  /** Position of the item in the source's list (0-based). */
+  index: number;
+  outcome: 'created' | 'updated' | 'unchanged' | 'skipped' | 'failed';
+  /** For `skipped` and `failed`: the engine's issue code and its safe, engine-written message. */
+  code?: IngestionIssueCode;
+  message?: string;
+  /** The product the item belongs to (created, or already known), when there is one. */
+  productId?: string;
+}
+
 export interface IngestionOptions {
   /** The clock. Injected so tests are deterministic. Default: real time. */
   now?: () => Date;
   /** Receives the raw cause of an unexpected failure, for logging. It is never stored or returned in results. */
   onUnexpectedError?: (context: string, error: unknown) => void;
+  /** Called once per item after it is handled. Observing only: it cannot change what the engine does. */
+  onItem?: (report: ItemReport) => void;
 }
 
 /** A run-level failure whose message is safe to show and store (no SQL, no payloads). */
@@ -79,6 +96,8 @@ interface Handled {
   outcome: Outcome;
   /** A short handle for the listing (its external id, else URL), when one could be read. */
   ref?: string;
+  /** The product this item created or belongs to. */
+  productId?: string;
 }
 
 interface RunContext<RawItem> {
@@ -161,24 +180,31 @@ export async function runIngestion<RawItem>(
         // An unexpected failure (for example a constraint clash) skips only this candidate.
         options.onUnexpectedError?.(`candidate ${index}`, error);
         counts.failed += 1;
-        record({ index, code: 'write_failed', message: 'Unexpected error while saving this candidate. Nothing was written for it.' });
+        const message = 'Unexpected error while saving this candidate. Nothing was written for it.';
+        record({ index, code: 'write_failed', message });
+        reportItem(options, { index, outcome: 'failed', code: 'write_failed', message });
         continue;
       }
 
-      const { outcome, ref } = handled;
+      const { outcome, ref, productId } = handled;
+      const withProduct = productId === undefined ? {} : { productId };
       if (outcome.kind === 'created') {
         counts.productsCreated += 1;
         counts.offersCreated += 1;
+        reportItem(options, { index, outcome: 'created', ...withProduct });
       } else if (outcome.kind === 'updated') {
         counts.offersUpdated += 1;
+        reportItem(options, { index, outcome: 'updated', ...withProduct });
       } else if (outcome.kind === 'unchanged') {
         counts.offersUnchanged += 1;
+        reportItem(options, { index, outcome: 'unchanged', ...withProduct });
       } else {
         if (outcome.code === 'duplicate') counts.duplicates += 1;
         else if (outcome.code === 'invalid') counts.invalid += 1;
         else if (outcome.code === 'unmapped_category') counts.unmapped += 1;
         else counts.conflicts += 1;
         record({ index, code: outcome.code, message: outcome.message, ...(ref ? { ref } : {}) });
+        reportItem(options, { index, outcome: 'skipped', code: outcome.code, message: outcome.message });
       }
     }
 
@@ -194,6 +220,15 @@ export async function runIngestion<RawItem>(
       options.onUnexpectedError?.('recording the failed run', recordingError);
       throw error;
     }
+  }
+}
+
+/** Tells an observer about one item. A misbehaving observer must never affect the run. */
+function reportItem(options: IngestionOptions, report: ItemReport): void {
+  try {
+    options.onItem?.(report);
+  } catch (error) {
+    options.onUnexpectedError?.(`onItem for candidate ${report.index}`, error);
   }
 }
 
@@ -227,7 +262,7 @@ async function processItem<RawItem>(context: RunContext<RawItem>, item: RawItem)
     return { ref, outcome: { kind: 'issue', code: 'identity_conflict', message: identity.reason } };
   }
   if (identity.kind === 'existing') {
-    return { ref, outcome: await refreshExisting(repos, identity.offer, candidate) };
+    return { ref, productId: identity.offer.productId, outcome: await refreshExisting(repos, identity.offer, candidate) };
   }
 
   // A brand-new listing needs a category to become a product. It never gets an invented one.
@@ -236,8 +271,8 @@ async function processItem<RawItem>(context: RunContext<RawItem>, item: RawItem)
     const seenCategory = candidate.externalCategory ? ` (category "${candidate.externalCategory}")` : '';
     return { ref, outcome: { kind: 'issue', code: 'unmapped_category', message: `No supported category for this listing${seenCategory}, so no product was created.` } };
   }
-  await createNewProduct(repos, retailer.id, categoryId, candidate);
-  return { ref, outcome: { kind: 'created' } };
+  const productId = await createNewProduct(repos, retailer.id, categoryId, candidate);
+  return { ref, productId, outcome: { kind: 'created' } };
 }
 
 type Identity =
@@ -326,9 +361,10 @@ async function resolveCategoryId<RawItem>(context: RunContext<RawItem>, candidat
 }
 
 /** Creates a PENDING product and its offer together. Source data only seeds fields of a new product. */
-async function createNewProduct(repos: IngestionRepositories, retailerId: string, categoryId: string, candidate: IngestionCandidate): Promise<void> {
+async function createNewProduct(repos: IngestionRepositories, retailerId: string, categoryId: string, candidate: IngestionCandidate): Promise<string> {
+  const productId = newId();
   await repos.ingestion.createProductWithOffer({
-    productId: newId(),
+    productId,
     offerId: newId(),
     slug: await uniqueSlug(repos, candidate),
     name: candidate.name,
@@ -339,6 +375,7 @@ async function createNewProduct(repos: IngestionRepositories, retailerId: string
     offer: offerFacts(candidate, 'USD'),
     ...(candidate.imageUrl !== undefined ? { imageUrl: candidate.imageUrl } : {}),
   });
+  return productId;
 }
 
 /**

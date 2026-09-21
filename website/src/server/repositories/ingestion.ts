@@ -71,6 +71,17 @@ export class IngestionRepository {
     return mapRetailer(row);
   }
 
+  /**
+   * Every retailer, read-only. Lets a connector that only knows a website (the URL importer)
+   * recognise a retailer that already exists instead of creating a second record for it.
+   */
+  async listRetailers(): Promise<RetailerRecord[]> {
+    const rows = await this.db.all<RetailerRow>(
+      'SELECT id, slug, name, website_url, is_active, created_at, updated_at FROM retailers ORDER BY slug',
+    );
+    return rows.map(mapRetailer);
+  }
+
   /** Strong identity: this retailer's own listing id. */
   async findOfferByListingId(retailerId: string, listingId: string): Promise<ExistingOffer | undefined> {
     const row = await this.db.first<IngestionOfferRow>(
